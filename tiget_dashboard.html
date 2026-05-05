@@ -400,8 +400,8 @@ document.getElementById('updateModal').addEventListener('click', function(e) {
 let GAMES = [];
 // 休日/平日で別モデル（v2: 2026-05-04 更新）
 // 人気球団（巨人・阪神・ヤクルト）は前売り枚数に既に反映されるため別係数は不要と判断
-let MODEL_WEEKEND = {"a": 1.926, "b": 393.1,  "r2": 0.885, "n_train": 7,  "label": "休日"};
-let MODEL_WEEKDAY = {"a": 3.243, "b": -58.3,   "r2": 0.924, "n_train": 7,  "label": "平日"};
+let MODEL_WEEKEND = {"a": 1.958, "b": 351.5,  "r2": 0.894, "n_train": 7,  "label": "休日"};
+let MODEL_WEEKDAY = {"a": 3.198, "b": -50.1,   "r2": 0.918, "n_train": 7,  "label": "平日"};
 let MODEL = MODEL_WEEKEND; // 後方互換用（モデル詳細タブで参照）
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -616,7 +616,7 @@ function projectPresale(g) {
   const today = new Date(TODAY);
   const gameDate = new Date(g.date);
   const daysLeft = Math.max(0, Math.round((gameDate - today) / (1000*60*60*24)));
-  const current = g.jiyu_sold + g.shitei_sold;
+  const current = g.total_presale;
   if (daysLeft <= 2) return current; // ほぼ確定
   const ve = EXPECTED_FINAL_PRESALE[g.venue] || EXPECTED_FINAL_PRESALE['エコスタ'];
   const expected = g.is_weekend ? ve.weekend : ve.weekday;
@@ -628,7 +628,7 @@ function projectPresale(g) {
 // 予測の内訳を返す
 function calcBreakdown(g) {
   if (g.is_cancelled) return null;
-  const currentPresale = g.jiyu_sold + g.shitei_sold;
+  const currentPresale = g.total_presale;
   const projectedPresale = g.is_past ? currentPresale : projectPresale(g);
   const m = g.is_weekend ? MODEL_WEEKEND : MODEL_WEEKDAY;
   const raw = Math.round(m.a * projectedPresale + m.b);
