@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏟️ オイシックス新潟アルビレックスBC 観客動員予測ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --orange: #F47920;
+    --orange-light: #FEF0E4;
+    --orange-dark: #C85D00;
+    --gray: #6B7280;
+    --gray-light: #F9FAFB;
+    --green: #10B981;
+    --red: #EF4444;
+    --blue: #3B82F6;
+    --bg: #FAFAFA;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Sans', 'メイリオ', sans-serif; background: var(--bg); color: #1F2937; }
+  
+  /* ヘッダー */
+  .header { background: linear-gradient(135deg, var(--orange-dark), var(--orange)); color: white; padding: 20px 24px; }
+  .header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .header-title { font-size: 1.3rem; font-weight: bold; }
+  .header-sub { font-size: 0.8rem; opacity: 0.85; margin-top: 2px; }
+  .update-badge { background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; }
+  
+  /* サマリーカード */
+  .summary-row { max-width: 1200px; margin: 20px auto; padding: 0 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .card { background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-top: 4px solid var(--orange); }
+  .card-label { font-size: 0.75rem; color: var(--gray); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card-value { font-size: 1.8rem; font-weight: bold; color: var(--orange-dark); margin-top: 6px; }
+  .card-sub { font-size: 0.78rem; color: var(--gray); margin-top: 4px; }
+  
+  /* タブ */
+  .tabs-wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 2px solid #E5E7EB; margin-bottom: 20px; }
+  .tab { padding: 10px 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--gray); border-radius: 8px 8px 0 0; transition: all 0.2s; white-space: nowrap; }
+  .tab.active { color: var(--orange); border-bottom: 3px solid var(--orange); margin-bottom: -2px; background: var(--orange-light); }
+  .tab:hover:not(.active) { background: #F3F4F6; }
+  
+  /* コンテンツ */
+  .content { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  
+  /* テーブル */
+  .table-wrap { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 24px; }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid #E5E7EB; display: flex; align-items: center; justify-content: space-between; }
+  .table-title { font-weight: 700; font-size: 0.95rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { background: #F9FAFB; padding: 11px 16px; text-align: left; font-size: 0.78rem; font-weight: 600; color: var(--gray); text-transform: uppercase; white-space: nowrap; position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 0 #E5E7EB; }
+  td { padding: 13px 16px; border-top: 1px solid #F3F4F6; vertical-align: middle; }
+  tr:hover td { background: var(--orange-light); }
+  /* 実績テーブル専用：列グループの区切り線 */
+  #pastTable .col-sep, #pastTable th.col-sep { border-left: 2px solid #E5E7EB; }
+  /* 実績テーブル：情報列を詰める／数字列に余白 */
+  #pastTable th:nth-child(1), #pastTable td:nth-child(1) { padding-left: 14px; padding-right: 8px; white-space: nowrap; width: 98px; }
+  #pastTable th:nth-child(2), #pastTable td:nth-child(2) { padding-left: 4px; padding-right: 4px; width: 40px; text-align: center; }
+  #pastTable th:nth-child(3), #pastTable td:nth-child(3) { padding-left: 6px; padding-right: 6px; }
+  #pastTable th:nth-child(4), #pastTable td:nth-child(4) { padding-left: 4px; padding-right: 8px; }
+  #pastTable th:nth-child(n+5), #pastTable td:nth-child(n+5) { padding-left: 20px; padding-right: 20px; }
+  
+  /* バッジ */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .badge-orange { background: var(--orange-light); color: var(--orange-dark); }
+  .badge-green { background: #D1FAE5; color: #065F46; }
+  .badge-red { background: #FEE2E2; color: #991B1B; }
+  .badge-blue { background: #DBEAFE; color: #1E40AF; }
+  .badge-gray { background: #F3F4F6; color: #4B5563; }
+  .badge-today { background: var(--orange); color: white; }
+  .badge-sponsor { background: #EDE9FE; color: #5B21B6; font-size: 0.68rem; padding: 1px 7px; }
+  
+  /* プログレスバー */
+  .progress-wrap { display: flex; align-items: center; gap: 8px; }
+  .progress-bar { flex: 1; height: 8px; background: #E5E7EB; border-radius: 4px; overflow: hidden; min-width: 60px; }
+  .progress-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--orange), var(--orange-dark)); transition: width 0.3s; }
+  .progress-pct { font-size: 0.78rem; color: var(--gray); min-width: 38px; text-align: right; }
+  
+  /* チャート */
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 20px; margin-bottom: 24px; }
+  .chart-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .chart-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 16px; color: #374151; }
+  .chart-container { position: relative; height: 300px; }
+  
+  /* モデル情報 */
+  .model-box { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+  .model-formula { font-size: 1.3rem; font-weight: bold; color: var(--orange-dark); text-align: center; padding: 20px; background: var(--orange-light); border-radius: 8px; margin: 16px 0; }
+  .model-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 16px; }
+  .model-stat { text-align: center; padding: 16px; background: var(--gray-light); border-radius: 8px; }
+  .model-stat-value { font-size: 1.4rem; font-weight: bold; color: var(--orange-dark); }
+  .model-stat-label { font-size: 0.78rem; color: var(--gray); margin-top: 4px; }
+  
+  /* 警告 */
+  .warning-box { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 0.85rem; color: #92400E; display: flex; gap: 10px; align-items: flex-start; }
+  
+  /* レスポンシブ */
+  @media (max-width: 768px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .tab { padding: 8px 12px; font-size: 0.82rem; }
+    .card-value { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <div class="header-title">🏟️ オイシックス新潟アルビレックスBC 観客動員予測</div>
+      <div class="header-sub">2026シーズン | TIGET前売り × スポナビ実績 連動ダッシュボード</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div id="updateBadge" class="update-badge">📅 読み込み中…</div>
+      <button id="refreshBtn" onclick="refreshData()"
+        style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.5);padding:7px 16px;border-radius:20px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s">
+        🔄 データを更新
+      </button>
+      <button id="updateBtn" onclick="showUpdateModal()"
+        style="background:rgba(255,255,255,0.95);color:#C85D00;border:none;padding:7px 16px;border-radius:20px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s">
+        ✏️ 前売り枚数を手動更新
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 更新モーダル -->
+<div id="updateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:16px;padding:28px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">🔄 前売り枚数を更新する</div>
+    <div style="font-size:0.85rem;color:#6B7280;margin-bottom:20px;line-height:1.6">
+      Coworkを開いて以下のメッセージを送ると、TIGETから最新データを自動取得してダッシュボードを更新します。
+    </div>
+    <div style="background:#F3F4F6;border-radius:10px;padding:14px;font-size:0.95rem;font-weight:600;color:#1F2937;margin-bottom:16px;text-align:center;letter-spacing:0.02em">
+      「前売り枚数を更新して」
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="copyUpdateCmd()"
+        style="flex:1;background:#F47920;color:white;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
+        📋 コピー
+      </button>
+      <button onclick="closeUpdateModal()"
+        style="flex:1;background:#F3F4F6;color:#374151;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
+        閉じる
+      </button>
+    </div>
+    <div id="copyDone" style="display:none;text-align:center;color:#10B981;font-size:0.82rem;margin-top:10px;font-weight:600">✅ コピーしました！Coworkに貼り付けてください</div>
+  </div>
+</div>
+
+<!-- その他招待モーダル -->
+<div id="otherModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:16px;padding:28px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px">🎟️ その他招待の設定</div>
+    <div id="otherModalDate" style="font-size:0.82rem;color:#6B7280;margin-bottom:4px"></div>
+    <div style="font-size:0.8rem;color:#6B7280;margin-bottom:20px;line-height:1.6">団体招待・企画招待など、冠試合以外の招待来場見込み数を入力してください。</div>
+    <div style="display:grid;gap:14px">
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px">招待来場見込み人数</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="otherInput" type="number" placeholder="例: 200" min="0" step="10"
+            style="flex:1;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:1.1rem;outline:none"
+            onfocus="this.style.borderColor='#F47920'" onblur="this.style.borderColor='#E5E7EB'">
+          <span style="font-size:0.88rem;color:#6B7280">人</span>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px">備考（招待内容・招待先など）</label>
+        <input id="otherMemo" type="text" placeholder="例: ○○団体 招待券100枚配布"
+          style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:0.9rem;outline:none;box-sizing:border-box"
+          onfocus="this.style.borderColor='#F47920'" onblur="this.style.borderColor='#E5E7EB'">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button onclick="saveOtherModal()"
+        style="flex:1;background:#F47920;color:white;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
+        💾 保存
+      </button>
+      <button onclick="clearOtherModal()"
+        style="flex:1;background:#FEF0E4;color:#C85D00;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
+        🗑️ クリア
+      </button>
+      <button onclick="closeOtherModal()"
+        style="background:#F3F4F6;color:#374151;border:none;padding:10px 14px;border-radius:8px;font-size:0.88rem;cursor:pointer">
+        ✕
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 冠設定編集モーダル -->
+<div id="sponsorModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:16px;padding:28px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px">👑 <span id="sponsorModalName"></span> 冠設定</div>
+    <div style="font-size:0.8rem;color:#6B7280;margin-bottom:20px">配券数と着券率を入力すると冠来場見込みが自動計算されます。設定はブラウザに保存されます。</div>
+    <div style="display:grid;gap:16px">
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px">配券数（配布枚数）</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="haikenInput" type="number" placeholder="例: 15000" min="0" step="100"
+            style="flex:1;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:0.95rem;outline:none"
+            oninput="updateSponsorCalc()" onfocus="this.style.borderColor='#F47920'" onblur="this.style.borderColor='#E5E7EB'">
+          <span style="font-size:0.88rem;color:#6B7280">枚</span>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px">着券率（昨年実績）</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="rateInput" type="number" placeholder="例: 9.3" min="0" max="100" step="0.1"
+            style="flex:1;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:0.95rem;outline:none"
+            oninput="updateSponsorCalc()" onfocus="this.style.borderColor='#F47920'" onblur="this.style.borderColor='#E5E7EB'">
+          <span style="font-size:0.88rem;color:#6B7280">%</span>
+        </div>
+      </div>
+      <div style="background:#F9FAFB;border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:0.78rem;color:#6B7280;margin-bottom:4px">冠来場見込み（配券数 × 着券率）</div>
+        <div id="kammuriCalcResult" style="font-size:1.6rem;font-weight:700;color:var(--orange-dark)">—</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button onclick="saveSponsorModal()"
+        style="flex:1;background:#F47920;color:white;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
+        💾 保存
+      </button>
+      <button onclick="resetSponsorModal()"
+        style="flex:1;background:#FEF0E4;color:#C85D00;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
+        🔄 デフォルトに戻す
+      </button>
+      <button onclick="closeSponsorModal()"
+        style="background:#F3F4F6;color:#374151;border:none;padding:10px 14px;border-radius:8px;font-size:0.88rem;cursor:pointer">
+        ✕
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function showUpdateModal() {
+  document.getElementById('updateModal').style.display = 'flex';
+}
+function closeUpdateModal() {
+  document.getElementById('updateModal').style.display = 'none';
+  document.getElementById('copyDone').style.display = 'none';
+}
+function copyUpdateCmd() {
+  navigator.clipboard.writeText('前売り枚数を更新して').then(() => {
+    document.getElementById('copyDone').style.display = 'block';
+  });
+}
+document.getElementById('updateModal').addEventListener('click', function(e) {
+  if (e.target === this) closeUpdateModal();
+});
+</script>
+
+<div class="summary-row" id="summaryCards"></div>
+
+<div class="tabs-wrap">
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('upcoming')">📋 今後の試合・予測</div>
+    <div class="tab" onclick="showTab('past')">📊 実績・精度検証</div>
+    <div class="tab" onclick="showTab('model')">🔬 予測モデル詳細</div>
+  </div>
+</div>
+
+<div class="content">
+  <!-- ===== 今後の試合パネル ===== -->
+  <div class="panel active" id="panel-upcoming">
+    <div class="warning-box">
+      ⚠️ 予測値は前売り枚数をもとにした推定です。当日券・天候・イベントによって実際の動員は変動します。
+    </div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-title">今後のホーム試合 前売り状況 & 動員予測</div>
+        <div style="font-size:0.8rem;color:var(--gray)">前売り = 自由席 + 指定席 + 招待</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="upcomingTable">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>時刻</th>
+              <th>対戦相手</th>
+              <th style="white-space:nowrap">球場</th>
+              <th style="white-space:nowrap">冠試合</th>
+              <th style="white-space:nowrap">天気</th>
+              <th style="text-align:right;padding-left:6px">📋 前売実績<br><span style="font-weight:400;font-size:0.7rem;text-transform:none">TIGET（自由+指定）</span></th>
+              <th style="text-align:right">📈 前売着地予測</th>
+              <th style="text-align:right">🏟️ 来場者予測</th>
+            </tr>
+          </thead>
+          <tbody id="upcomingBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ===== 実績パネル ===== -->
+  <div class="panel" id="panel-past">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">📈 前売り枚数 vs 実際の動員数（散布図）</div>
+        <div class="chart-container"><canvas id="scatterChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">🏟️ 試合別 実績動員数（スポナビ）</div>
+        <div class="chart-container"><canvas id="barChart"></canvas></div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-title">完了試合 実績一覧</div>
+        <div style="font-size:0.8rem;color:var(--gray)">スポーツナビ 観客数データ</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="pastTable">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>曜日</th>
+              <th>対戦相手</th>
+              <th style="white-space:nowrap">冠試合</th>
+              <th class="col-sep">前売り合計</th>
+              <th>前売り率</th>
+              <th>有償率</th>
+              <th class="col-sep">予測動員</th>
+              <th>実績動員</th>
+              <th>誤差</th>
+              <th>倍率</th>
+            </tr>
+          </thead>
+          <tbody id="pastBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ===== モデルパネル ===== -->
+  <div class="panel" id="panel-model">
+    <div class="model-box">
+      <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:8px">📐 予測モデル（休日/平日 2モデル制）</h2>
+      <p style="font-size:0.88rem;color:var(--gray);margin-bottom:12px">
+        休日と平日で来場パターンが異なるため、別々の回帰モデルを使用しています。<br>
+        前売り枚数（自由席＋指定席）を説明変数とし、最終観客動員を予測します。
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="model-formula" id="modelFormulaWeekend"></div>
+        <div class="model-formula" id="modelFormulaWeekday"></div>
+      </div>
+      <div class="model-stats" id="modelStats"></div>
+    </div>
+    
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">📉 回帰直線 & 実測値</div>
+        <div class="chart-container"><canvas id="regressionChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">🎯 対戦相手別 平均動員・前売り</div>
+        <div class="chart-container"><canvas id="opponentChart"></canvas></div>
+      </div>
+    </div>
+    
+    <div class="model-box">
+      <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:12px">📝 モデルの注意事項・今後の改善点</h3>
+      <ul style="font-size:0.85rem;color:#374151;line-height:1.8;padding-left:16px">
+        <li>現在の学習データは <strong id="trainCount"></strong> 試合のみ。シーズン進行とともに精度が向上します。</li>
+        <li>天候（雨天）・連休・特別イベントなど外的要因は現時点で非考慮です。</li>
+        <li>試合中止データはモデル学習から除外しています（4/02 vs ハヤテ、4/10 vs ヤクルト）。</li>
+      </ul>
+    </div>
+
+    <div class="model-box" style="margin-top:16px">
+      <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:12px">🏟️ 会場別フロア（最低保証ライン）</h3>
+      <p style="font-size:0.82rem;color:var(--gray);margin-bottom:12px">
+        前売り枚数が少ない試合でも現実的な予測値を返すため、2025年実績・2026年実績に基づく「会場別フロア」を設定しています。<br>
+        予測値 = max（回帰モデル値, 前売り枚数, 会場フロア）＋ 紙チケット見込み来場数
+      </p>
+      <table style="font-size:0.83rem;border-collapse:collapse;width:100%;max-width:500px">
+        <thead><tr style="background:var(--gray-light)">
+          <th style="padding:6px 12px;text-align:left;border:1px solid #E5E7EB">会場</th>
+          <th style="padding:6px 12px;text-align:right;border:1px solid #E5E7EB">フロア</th>
+          <th style="padding:6px 12px;text-align:left;border:1px solid #E5E7EB">根拠</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:5px 12px;border:1px solid #E5E7EB">エコスタ</td><td style="padding:5px 12px;text-align:right;border:1px solid #E5E7EB">300人</td><td style="padding:5px 12px;border:1px solid #E5E7EB;color:var(--gray)">2026最小実績330人（3/31開幕戦）</td></tr>
+          <tr style="background:var(--gray-light)"><td style="padding:5px 12px;border:1px solid #E5E7EB">悠久山</td><td style="padding:5px 12px;text-align:right;border:1px solid #E5E7EB">600人</td><td style="padding:5px 12px;border:1px solid #E5E7EB;color:var(--gray)">2025年非冠平均619人・2026最小629人</td></tr>
+          <tr><td style="padding:5px 12px;border:1px solid #E5E7EB">佐藤池</td><td style="padding:5px 12px;text-align:right;border:1px solid #E5E7EB">500人</td><td style="padding:5px 12px;border:1px solid #E5E7EB;color:var(--gray)">データ不足のため保守的に設定</td></tr>
+          <tr style="background:var(--gray-light)"><td style="padding:5px 12px;border:1px solid #E5E7EB">三条パール</td><td style="padding:5px 12px;text-align:right;border:1px solid #E5E7EB">650人</td><td style="padding:5px 12px;border:1px solid #E5E7EB;color:var(--gray)">2025年類似会場平均731人から設定</td></tr>
+          <tr><td style="padding:5px 12px;border:1px solid #E5E7EB">ベーマガ</td><td style="padding:5px 12px;text-align:right;border:1px solid #E5E7EB">500人</td><td style="padding:5px 12px;border:1px solid #E5E7EB;color:var(--gray)">データ不足のため保守的に設定</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== データ =====
+let GAMES = [];
+// 休日/平日で別モデル（v2: 2026-05-04 更新）
+// 人気球団（巨人・阪神・ヤクルト）は前売り枚数に既に反映されるため別係数は不要と判断
+let MODEL_WEEKEND = {"a": 1.926, "b": 393.1,  "r2": 0.885, "n_train": 7,  "label": "休日"};
+let MODEL_WEEKDAY = {"a": 3.243, "b": -58.3,   "r2": 0.924, "n_train": 7,  "label": "平日"};
+let MODEL = MODEL_WEEKEND; // 後方互換用（モデル詳細タブで参照）
+const TODAY = new Date().toISOString().slice(0, 10);
+
+// ===== fetch方式: JSONからデータ読み込み =====
+function recomputeFlags(games) {
+  games.forEach(g => {
+    g.is_today = (g.date === TODAY);
+    g.is_past  = (g.date < TODAY);
+  });
+}
+
+async function loadData() {
+  try {
+    const res = await fetch('tiget_data.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    GAMES = json.games || [];
+    if (json.models) {
+      if (json.models.weekend) MODEL_WEEKEND = Object.assign(MODEL_WEEKEND, json.models.weekend, {label: "休日"});
+      if (json.models.weekday) MODEL_WEEKDAY = Object.assign(MODEL_WEEKDAY, json.models.weekday, {label: "平日"});
+      MODEL = MODEL_WEEKEND;
+    }
+    recomputeFlags(GAMES);
+    const badge = document.getElementById('updateBadge');
+    if (badge) badge.textContent = '📅 ' + (json.last_updated || TODAY) + ' 更新';
+    return true;
+  } catch(e) {
+    console.warn('tiget_data.json の読み込みに失敗。埋め込みデータはありません:', e);
+    const badge = document.getElementById('updateBadge');
+    if (badge) badge.textContent = '⚠️ データ読み込みエラー';
+    return false;
+  }
+}
+
+async function refreshData() {
+  const btn = document.getElementById('refreshBtn');
+  const badge = document.getElementById('updateBadge');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 更新中…'; }
+  const ok = await loadData();
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 データを更新'; }
+  if (ok) {
+    renderSummary();
+    renderUpcoming();
+    renderPast();
+    fetchAllWeather();
+  }
+}
+
+// 会場別フロア（最低保証ライン）
+// 根拠: 2025年実績 + 2026年最小実績
+// エコスタ: 2026最小330人（3/31開幕戦）
+// 悠久山: 2025年非冠平均619人・2026年最小629人 → 600人に設定
+// 佐藤池: データ不足のため保守的に500人
+// 三条パール: 2025年類似会場平均731人 → 650人に設定
+// ベーマガ: データ不足のため保守的に500人
+const VENUE_FLOOR = {
+  'エコスタ': 300,
+  '悠久山':   600,
+  '佐藤池':   500,
+  '三条パール': 650,
+  'ベーマガ':  500,
+};
+
+// ===== 球場座標（天気予報用）=====
+const VENUE_COORDS = {
+  'エコスタ':   { lat: 37.911, lon: 139.052 }, // HARD OFF ECO Stadium Niigata
+  '悠久山':     { lat: 37.458, lon: 138.846 }, // 悠久山野球場（長岡）
+  '佐藤池':     { lat: 37.588, lon: 138.788 }, // 佐藤池球場（小千谷）
+  '三条パール': { lat: 37.638, lon: 138.962 }, // 三条パール金属スタジアム
+  'ベーマガ':   { lat: 37.911, lon: 139.052 }, // ベースボールマガジン社（新潟市近辺として設定）
+};
+
+// ===== 天気予報キャッシュ =====
+// { 'YYYY-MM-DD_venue': { icon, temp, precip, label } }
+const _weatherCache = {};
+let _weatherFetchDone = false;
+
+function wmoToIcon(code, precip) {
+  if (code === 0) return '☀️';
+  if (code <= 2) return '🌤️';
+  if (code === 3) return '☁️';
+  if (code <= 48) return '🌫️';
+  if (code <= 67) return precip >= 5 ? '🌧️' : '🌦️';
+  if (code <= 77) return '❄️';
+  if (code <= 82) return precip >= 5 ? '🌧️' : '🌦️';
+  return '⛈️';
+}
+
+function wmoToLabel(code, precip) {
+  if (code === 0) return '晴れ';
+  if (code <= 2) return '晴れのち曇り';
+  if (code === 3) return '曇り';
+  if (code <= 48) return '霧';
+  if (code <= 67) return precip >= 5 ? '雨' : '小雨';
+  if (code <= 77) return '雪';
+  if (code <= 82) return precip >= 5 ? '雨' : 'にわか雨';
+  return '雷雨';
+}
+
+async function fetchWeatherForVenue(venueName, dates) {
+  const coord = VENUE_COORDS[venueName] || VENUE_COORDS['エコスタ'];
+  const sorted = [...dates].sort();
+  const startDate = sorted[0];
+  const endDate = sorted[sorted.length - 1];
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coord.lat}&longitude=${coord.lon}` +
+      `&daily=weathercode,temperature_2m_max,precipitation_sum` +
+      `&timezone=Asia%2FTokyo&start_date=${startDate}&end_date=${endDate}`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const json = await res.json();
+    const daily = json.daily;
+    daily.time.forEach((d, i) => {
+      const key = `${d}_${venueName}`;
+      const code = daily.weathercode[i];
+      const temp = Math.round(daily.temperature_2m_max[i]);
+      const precip = daily.precipitation_sum[i] || 0;
+      _weatherCache[key] = {
+        icon: wmoToIcon(code, precip),
+        temp,
+        precip: precip.toFixed(1),
+        label: wmoToLabel(code, precip),
+      };
+    });
+  } catch(e) { /* サイレント失敗 */ }
+}
+
+async function fetchAllWeather() {
+  if (_weatherFetchDone) return;
+  _weatherFetchDone = true;
+  const today = new Date(TODAY);
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() + 14); // 14日先まで
+
+  // 対象試合を venue 別にグループ化
+  const venueMap = {};
+  GAMES.filter(g => !g.is_past && !g.is_cancelled).forEach(g => {
+    const gd = new Date(g.date);
+    if (gd > cutoff) return; // 14日超はスキップ
+    const v = g.venue || 'エコスタ';
+    if (!venueMap[v]) venueMap[v] = [];
+    venueMap[v].push(g.date);
+  });
+
+  await Promise.all(Object.entries(venueMap).map(([v, dates]) => fetchWeatherForVenue(v, dates)));
+  renderUpcoming(); // 取得完了後に再描画
+}
+
+function getWeather(date, venue) {
+  const v = venue || 'エコスタ';
+  return _weatherCache[`${date}_${v}`] || null;
+}
+
+// ===== スポンサーデータ（配券数・着券率）=====
+// localStorage に保存 → ページを閉じても設定が残る
+const SPONSOR_DEFAULTS = {
+  'コメリ':           { haiken: 15000, rate: 9.3 },  // 2025実績: 13,000枚×9.3% / 2026配布: 15,000枚
+  '飛田テック':        { haiken: null,  rate: null }, // 配券数不明・2025★無償avg=234人
+  '喜芳':             { haiken: null,  rate: null }, // 配券数不明・2025★無償=704人
+  'トキっ子くらぶ':    { haiken: null,  rate: null },
+  '柏崎刈羽地区後援会': { haiken: null,  rate: null },
+  '越後製菓':          { haiken: null,  rate: null }, // 2026新規スポンサー
+  '角上魚類':          { haiken: null,  rate: null },
+  'Oisix':            { haiken: null,  rate: null },
+};
+const SPONSOR_DATA = JSON.parse(localStorage.getItem('tiget_sponsor_data') || JSON.stringify(SPONSOR_DEFAULTS));
+
+function saveSponsorData() {
+  localStorage.setItem('tiget_sponsor_data', JSON.stringify(SPONSOR_DATA));
+}
+
+// ===== その他招待データ（試合日付をキーに来場見込み人数を保存）=====
+const OTHER_VISITORS = JSON.parse(localStorage.getItem('tiget_other_visitors') || '{}');
+
+function saveOtherVisitors() {
+  localStorage.setItem('tiget_other_visitors', JSON.stringify(OTHER_VISITORS));
+}
+
+function getOtherVisitors(date) {
+  const d = OTHER_VISITORS[date];
+  if (!d) return 0;
+  return typeof d === 'object' ? (d.count || 0) : d; // 旧形式(数値)との互換
+}
+
+function getOtherMemo(date) {
+  const d = OTHER_VISITORS[date];
+  if (!d || typeof d !== 'object') return '';
+  return d.memo || '';
+}
+
+// 冠来場見込みを返す（配券数・着券率が設定済みなら計算値、未設定ならGAMESのfallback値）
+function getKammuriVisitors(kammuri, fallback) {
+  if (!kammuri) return 0;
+  const sd = SPONSOR_DATA[kammuri];
+  if (sd && sd.haiken != null && sd.rate != null) {
+    return Math.round(sd.haiken * sd.rate / 100);
+  }
+  return fallback || 0;
+}
+
+// 会場・曜日別「最終前売り期待値」（2026年実績ベース）
+const EXPECTED_FINAL_PRESALE = {
+  'エコスタ': { weekend: 536, weekday: 324 },
+  '悠久山':   { weekend: 450, weekday: 173 },
+  '佐藤池':   { weekend: 300, weekday: 200 },
+  '三条パール':{ weekend: 350, weekday: 220 },
+  'ベーマガ':  { weekend: 300, weekday: 180 },
+};
+
+// 残り日数に応じた前売り着地予測
+function projectPresale(g) {
+  const today = new Date(TODAY);
+  const gameDate = new Date(g.date);
+  const daysLeft = Math.max(0, Math.round((gameDate - today) / (1000*60*60*24)));
+  const current = g.jiyu_sold + g.shitei_sold;
+  if (daysLeft <= 2) return current; // ほぼ確定
+  const ve = EXPECTED_FINAL_PRESALE[g.venue] || EXPECTED_FINAL_PRESALE['エコスタ'];
+  const expected = g.is_weekend ? ve.weekend : ve.weekday;
+  // 残り日数が少ないほどcurrentに近づく、多いほどexpectedに近づく
+  const fillRatio = daysLeft <= 4 ? 0.4 : daysLeft <= 7 ? 0.6 : daysLeft <= 14 ? 0.8 : 1.0;
+  return Math.max(current, Math.round(current + Math.max(0, expected - current) * fillRatio));
+}
+
+// 予測の内訳を返す
+function calcBreakdown(g) {
+  if (g.is_cancelled) return null;
+  const currentPresale = g.jiyu_sold + g.shitei_sold;
+  const projectedPresale = g.is_past ? currentPresale : projectPresale(g);
+  const m = g.is_weekend ? MODEL_WEEKEND : MODEL_WEEKDAY;
+  const raw = Math.round(m.a * projectedPresale + m.b);
+  const floor = VENUE_FLOOR[g.venue] || VENUE_FLOOR['エコスタ'];
+  const base = Math.max(raw, projectedPresale, floor);
+  const kammuri = getKammuriVisitors(g.kammuri, g.kammuri_visitors);
+  const other = getOtherVisitors(g.date);
+  return { currentPresale, projectedPresale, base, kammuri, other, total: base + kammuri + other };
+}
+
+// 予測値を動的に計算（後方互換）
+function calcPrediction(g) {
+  const b = calcBreakdown(g);
+  return b ? b.total : null;
+}
+
+// チーム別カラー
+const OPPONENT_COLORS = {
+  '楽天': '#AC0000', 'ロッテ': '#1F2937', 'ヤクルト': '#003399',
+  '日本ハム': '#00A0E9', '阪神': '#FFE000', '広島': '#E2052A',
+  'DeNA': '#004A9B', 'ハヤテ': '#000080',
+};
+
+// ===== タブ制御 =====
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['upcoming','past','model'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'past') renderCharts();
+  if (name === 'model') renderModelCharts();
+}
+
+// ===== サマリーカード =====
+function renderSummary() {
+  const pastGames = GAMES.filter(g => g.is_past && !g.is_cancelled && g.actual_audience);
+  const todayGame = GAMES.find(g => g.is_today);
+  const totalAudience = pastGames.reduce((s,g) => s + g.actual_audience, 0);
+  const avgAudience = pastGames.length ? Math.round(totalAudience / pastGames.length) : 0;
+  const maxGame = pastGames.reduce((m,g) => !m || g.actual_audience > m.actual_audience ? g : m, null);
+  const totalPresale = GAMES.filter(g=>!g.is_cancelled).reduce((s,g)=>s+g.total_presale,0);
+  
+  const completedCount = GAMES.filter(g => g.is_past && !g.is_cancelled).length;
+  const cancelledCount = GAMES.filter(g => g.is_cancelled).length;
+
+  const cards = [
+    {label:'今季ホーム試合数', value: completedCount + '試合', sub:'中止 ' + cancelledCount + '試合'},
+    {label:'完了試合 累計動員', value: totalAudience.toLocaleString() + '人', sub: pastGames.length + '試合分'},
+    {label:'完了試合 平均動員', value: avgAudience.toLocaleString() + '人', sub:'1試合あたり'},
+    {label:'最多動員試合', value: maxGame ? maxGame.actual_audience.toLocaleString()+'人' : '-', sub: maxGame ? maxGame.date + ' vs ' + maxGame.opponent : ''},
+  ];
+  
+  const wrap = document.getElementById('summaryCards');
+  wrap.innerHTML = cards.map(c => `
+    <div class="card">
+      <div class="card-label">${c.label}</div>
+      <div class="card-value">${c.value}</div>
+      <div class="card-sub">${c.sub}</div>
+    </div>
+  `).join('');
+}
+
+// ===== 今後の試合テーブル =====
+function renderUpcoming() {
+  const today = new Date(TODAY);
+  const upcoming = GAMES.filter(g => !g.is_past && !g.is_cancelled);
+  const tbody = document.getElementById('upcomingBody');
+  tbody.innerHTML = upcoming.map(g => {
+    const isToday = g.is_today;
+    const rowClass = isToday ? 'style="background:#FFF7ED"' : '';
+    const gameDate = new Date(g.date);
+    const daysLeft = Math.max(0, Math.round((gameDate - today) / (1000*60*60*24)));
+
+    const dateBadge = isToday
+      ? `<span class="badge badge-today">本日 ${g.date}</span>`
+      : `<span style="font-size:0.88rem">${g.date}</span>`;
+    const dowBadge = `<span class="badge ${g.is_weekend ? 'badge-orange' : 'badge-gray'}">${g.dow}</span>`;
+    const opColor = OPPONENT_COLORS[g.opponent] || '#6B7280';
+    const venueName = g.venue || 'エコスタ';
+    const venueCell = `<span class="badge badge-blue" style="font-size:0.65rem;padding:1px 6px;white-space:nowrap">${venueName}</span>`;
+
+    // 天気予報（14日以内のみ）独立セル
+    const wx = daysLeft <= 14 ? getWeather(g.date, venueName) : null;
+    const weatherCell = wx
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap" title="${wx.label} / 最高${wx.temp}℃ / 降水${wx.precip}mm"><span style="font-size:1rem">${wx.icon}</span><span style="font-size:0.78rem;color:#374151;font-weight:600">${wx.temp}℃</span></span>`
+      : (daysLeft <= 14 ? `<span style="font-size:0.72rem;color:#9CA3AF">取得中</span>` : `<span style="color:#D1D5DB;font-size:0.72rem">—</span>`);
+    const kammuriLabel = g.kammuri ? `<span class="badge badge-sponsor">👑${g.kammuri}</span>` : '';
+    const editBtn = g.kammuri
+      ? `<button onclick="openSponsorModal('${g.kammuri}')" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--gray);padding:0 3px;vertical-align:middle" title="冠設定を編集">✏️</button>`
+      : '';
+
+    const bd = calcBreakdown(g);
+
+    // ① 前売実績セル
+    const currentCell = `
+      <span style="font-weight:700">${bd.currentPresale.toLocaleString()}枚</span>
+      <div style="font-size:0.68rem;color:var(--gray);margin-top:1px">自${g.jiyu_sold} + 指${g.shitei_sold}</div>`;
+
+    // ② 前売着地予測セル
+    const daysTag = daysLeft <= 3
+      ? `<span style="color:var(--red);font-size:0.68rem">あと${daysLeft}日</span>`
+      : `<span style="font-size:0.68rem;color:var(--gray)">${daysLeft}日前</span>`;
+    const projChanged = bd.projectedPresale > bd.currentPresale;
+    const projCell = `
+      <span style="font-weight:700;color:${projChanged ? 'var(--blue)' : 'var(--gray)'}">
+        ${bd.projectedPresale.toLocaleString()}枚
+      </span>
+      <div style="margin-top:1px">${daysTag}</div>`;
+
+    // ③ 来場者予測セル（冠・その他招待は内訳付き）
+    const otherMemo = getOtherMemo(g.date);
+    const otherBtnLabel = bd.other > 0
+      ? `🎟️ ${bd.other.toLocaleString()}人${otherMemo ? ` (${otherMemo})` : ''}`
+      : '＋ その他招待';
+    const otherEditBtn = `<button onclick="openOtherModal('${g.date}','${g.opponent}')" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.68rem;color:${bd.other > 0 ? '#059669' : 'var(--gray)'};padding:1px 5px;margin-top:3px;display:inline-block;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${otherMemo || 'その他招待を設定'}">${otherBtnLabel}</button>`;
+
+    let predCell;
+    const hasExtra = (g.kammuri && bd.kammuri > 0) || bd.other > 0;
+    if (hasExtra) {
+      let breakdown = `ベース <strong>${bd.base.toLocaleString()}</strong>`;
+      if (g.kammuri && bd.kammuri > 0) {
+        const sd = SPONSOR_DATA[g.kammuri];
+        const hasConfig = sd && sd.haiken != null && sd.rate != null;
+        const kammuriDetail = hasConfig ? `${(sd.haiken/10000).toFixed(1)}万枚×${sd.rate}%` : `見込み`;
+        breakdown += ` ＋ 冠 <strong style="color:#7C3AED">${bd.kammuri.toLocaleString()}</strong><span style="color:#9CA3AF">(${kammuriDetail})</span>`;
+      }
+      if (bd.other > 0) {
+        breakdown += ` ＋ 招待 <strong style="color:#059669">${bd.other.toLocaleString()}</strong>`;
+      }
+      predCell = `
+        <span style="font-size:1.05rem;font-weight:700;color:var(--orange-dark)">${bd.total.toLocaleString()}人</span>
+        <div style="font-size:0.68rem;color:var(--gray);margin-top:2px;line-height:1.7">${breakdown}</div>
+        ${otherEditBtn}`;
+    } else {
+      predCell = `
+        <span style="font-size:1.05rem;font-weight:700;color:var(--orange-dark)">${bd.total.toLocaleString()}人</span><br>
+        ${otherEditBtn}`;
+    }
+
+    return `
+      <tr ${rowClass}>
+        <td style="white-space:nowrap">${dateBadge} ${dowBadge}</td>
+        <td style="font-size:0.85rem">${g.time}</td>
+        <td>
+          <span style="color:${opColor};font-weight:700">${g.opponent}</span>
+        </td>
+        <td style="white-space:nowrap">${venueCell}</td>
+        <td style="white-space:nowrap">${kammuriLabel}${editBtn}</td>
+        <td style="white-space:nowrap;text-align:center">${weatherCell}</td>
+        <td style="text-align:right;padding-left:6px">${currentCell}</td>
+        <td style="text-align:right">${projCell}</td>
+        <td style="text-align:right">${predCell}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ===== 実績テーブル =====
+function renderPast() {
+  const past = GAMES.filter(g => g.is_past);
+  const tbody = document.getElementById('pastBody');
+  tbody.innerHTML = past.map(g => {
+    // 曜日バッジ（中止試合でも共通表示）
+    const dowBadgePast = `<span class="badge ${g.is_weekend ? 'badge-orange' : 'badge-gray'}">${g.dow}</span>`;
+
+    if (g.is_cancelled) {
+      return `
+        <tr style="color:#9CA3AF">
+          <td>${g.date}</td>
+          <td>${dowBadgePast}</td>
+          <td style="font-weight:600;color:${OPPONENT_COLORS[g.opponent]||'#9CA3AF'}">${g.opponent}</td>
+          <td style="white-space:nowrap">${g.kammuri ? `<span class="badge badge-sponsor">👑${g.kammuri}</span>` : ''}</td>
+          <td class="col-sep" colspan="7" style="text-align:center"><span class="badge badge-red">試合中止</span></td>
+        </tr>
+      `;
+    }
+    const err = g.actual_audience ? calcPrediction(g) - g.actual_audience : null;
+    const errPct = g.actual_audience ? (err / g.actual_audience * 100) : null;
+    const ratio = g.actual_audience && g.total_presale > 0 ? (g.actual_audience / g.total_presale).toFixed(2) : '-';
+    const errColor = err === null ? '' : Math.abs(errPct) < 10 ? 'color:var(--green)' : Math.abs(errPct) < 20 ? 'color:var(--orange-dark)' : 'color:var(--red)';
+    const hasActual = g.actual_audience !== null;
+    // 有償率 = (自由+指定 - クーポン) / total_presale × 100
+    // 有償除外: ①招待券(shotai_sold) ②BCからのご招待クーポン(shotai_coupon)
+    const coupon = g.shotai_coupon || 0;
+    const paidPct = g.total_presale > 0 ? (g.jiyu_sold + g.shitei_sold - coupon) / g.total_presale * 100 : null;
+    const paidColor = paidPct === null ? '' : paidPct >= 90 ? 'color:var(--green)' : paidPct >= 70 ? 'color:var(--orange-dark)' : 'color:var(--red)';
+    const presalePct = g.actual_audience > 0 ? (g.total_presale / g.actual_audience * 100) : null;
+
+    // 前売り率：バーなし・%のみ（行高を抑える）
+    const presalePctCell = presalePct !== null
+      ? `<span style="font-weight:600">${presalePct.toFixed(1)}%</span>`
+      : '-';
+
+    // 誤差：%をメインに、人数をサブ表示
+    const errCell = err !== null
+      ? `<span style="font-weight:700;${errColor}">${errPct > 0 ? '+' : ''}${errPct.toFixed(1)}%</span>
+         <div style="font-size:0.72rem;color:var(--gray);margin-top:1px">${err > 0 ? '+' : ''}${err.toLocaleString()}人</div>`
+      : '-';
+
+    return `
+      <tr>
+        <td style="color:#6B7280;font-size:0.85rem">${g.date}</td>
+        <td>${dowBadgePast}</td>
+        <td style="font-weight:700;color:${OPPONENT_COLORS[g.opponent]||'#374151'}">${g.opponent}</td>
+        <td style="white-space:nowrap">${g.kammuri ? `<span class="badge badge-sponsor">👑${g.kammuri}</span>` : ''}</td>
+        <td class="col-sep" style="text-align:right">${g.total_presale.toLocaleString()}枚</td>
+        <td style="text-align:right">${presalePctCell}</td>
+        <td style="text-align:right;font-weight:700;${paidColor}">
+          ${paidPct !== null ? paidPct.toFixed(1) + '%' : '-'}
+        </td>
+        <td class="col-sep" style="text-align:right;color:#9CA3AF;font-size:0.83rem">
+          ${calcPrediction(g)?.toLocaleString() ?? '-'}人
+        </td>
+        <td style="text-align:right;font-weight:700;font-size:1.02rem">
+          ${hasActual ? g.actual_audience.toLocaleString()+'人' : '<span class="badge badge-gray">未掲載</span>'}
+        </td>
+        <td style="text-align:right">${errCell}</td>
+        <td style="text-align:right;color:#9CA3AF;font-size:0.83rem">${ratio}x</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ===== チャート =====
+let chartsRendered = false;
+function renderCharts() {
+  if (chartsRendered) return;
+  chartsRendered = true;
+  
+  const pastData = GAMES.filter(g => g.is_past && !g.is_cancelled && g.actual_audience);
+  
+  // 散布図
+  new Chart(document.getElementById('scatterChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: '実測値',
+        data: pastData.map(g => ({ x: g.total_presale, y: g.actual_audience })),
+        backgroundColor: pastData.map(g => OPPONENT_COLORS[g.opponent] || '#F47920'),
+        pointRadius: 8,
+        pointHoverRadius: 10,
+      },{
+        label: '回帰直線',
+        data: (() => {
+          const maxX = Math.max(...pastData.map(g=>g.total_presale)) * 1.1;
+          return [
+            {x:0, y:MODEL.b},
+            {x:maxX, y:MODEL.a*maxX+MODEL.b}
+          ];
+        })(),
+        type: 'line',
+        borderColor: '#F47920',
+        borderDash: [6,3],
+        borderWidth: 2,
+        pointRadius: 0,
+        backgroundColor: 'transparent',
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {position:'top'},
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.datasetIndex === 0) {
+                const g = pastData[ctx.dataIndex];
+                return `${g.date} vs ${g.opponent}: 前売=${g.total_presale}枚 実績=${g.actual_audience}人`;
+              }
+              return null;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {title:{display:true, text:'前売り合計枚数'}},
+        y: {title:{display:true, text:'実際の動員数（人）'}}
+      }
+    }
+  });
+  
+  // 棒グラフ
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: pastData.map(g => g.date.slice(5) + ' ' + g.opponent),
+      datasets: [{
+        label: '実績動員数',
+        data: pastData.map(g => g.actual_audience),
+        backgroundColor: pastData.map(g => OPPONENT_COLORS[g.opponent] + 'CC' || '#F4792099'),
+        borderColor: pastData.map(g => OPPONENT_COLORS[g.opponent] || '#F47920'),
+        borderWidth: 2,
+      },{
+        label: '予測動員数',
+        data: pastData.map(g => calcPrediction(g)),
+        backgroundColor: 'transparent',
+        borderColor: '#F47920',
+        borderDash: [4,2],
+        borderWidth: 2,
+        type: 'line',
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: {position:'top'} },
+      scales: {
+        y: {title:{display:true, text:'動員数（人）'}}
+      }
+    }
+  });
+}
+
+let modelChartsRendered = false;
+function renderModelCharts() {
+  if (modelChartsRendered) return;
+  modelChartsRendered = true;
+  
+  // モデル公式を表示（2モデル）
+  document.getElementById('modelFormulaWeekend').innerHTML =
+    `<span style="font-size:0.75rem;color:var(--orange);font-weight:700">🌤 休日モデル (n=${MODEL_WEEKEND.n_train})</span><br>` +
+    `予測 = ${MODEL_WEEKEND.a} × 前売り + ${MODEL_WEEKEND.b.toFixed(0)}`;
+  document.getElementById('modelFormulaWeekday').innerHTML =
+    `<span style="font-size:0.75rem;color:var(--blue);font-weight:700">💼 平日モデル (n=${MODEL_WEEKDAY.n_train})</span><br>` +
+    `予測 = ${MODEL_WEEKDAY.a} × 前売り + ${MODEL_WEEKDAY.b.toFixed(0)}`;
+  document.getElementById('trainCount').textContent = MODEL_WEEKEND.n_train + MODEL_WEEKDAY.n_train;
+
+  document.getElementById('modelStats').innerHTML = [
+    {label:'休日 R²', value: (MODEL_WEEKEND.r2 * 100).toFixed(1) + '%', sub:'休日の説明力'},
+    {label:'平日 R²', value: (MODEL_WEEKDAY.r2 * 100).toFixed(1) + '%', sub:'平日の説明力'},
+    {label:'休日 MAE', value: '約101人', sub:'平均予測誤差'},
+    {label:'平日 MAE', value: '約145人', sub:'平均予測誤差'},
+  ].map(s => `
+    <div class="model-stat">
+      <div class="model-stat-value">${s.value}</div>
+      <div class="model-stat-label">${s.label}</div>
+      <div style="font-size:0.72rem;color:#9CA3AF;margin-top:2px">${s.sub}</div>
+    </div>
+  `).join('');
+  
+  const pastData = GAMES.filter(g => g.is_past && !g.is_cancelled && g.actual_audience);
+  
+  // 回帰直線
+  const maxX = Math.max(...pastData.map(g=>g.total_presale)) * 1.15;
+  new Chart(document.getElementById('regressionChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {label:'実測値（休日）', data:pastData.filter(g=>g.is_weekend&&!g.kammuri).map(g=>({x:g.total_presale,y:g.actual_audience})), backgroundColor:'#F47920', pointRadius:8},
+        {label:'実測値（平日）', data:pastData.filter(g=>!g.is_weekend&&!g.kammuri).map(g=>({x:g.total_presale,y:g.actual_audience})), backgroundColor:'#3B82F6', pointRadius:8},
+        {label:`休日回帰線 (R²=${(MODEL_WEEKEND.r2*100).toFixed(1)}%)`, data:[{x:0,y:MODEL_WEEKEND.b},{x:maxX,y:MODEL_WEEKEND.a*maxX+MODEL_WEEKEND.b}], type:'line', borderColor:'#C85D00', borderDash:[6,3], borderWidth:2, pointRadius:0, backgroundColor:'transparent'},
+        {label:`平日回帰線 (R²=${(MODEL_WEEKDAY.r2*100).toFixed(1)}%)`, data:[{x:0,y:MODEL_WEEKDAY.b},{x:maxX,y:MODEL_WEEKDAY.a*maxX+MODEL_WEEKDAY.b}], type:'line', borderColor:'#3B82F6', borderDash:[4,4], borderWidth:2, pointRadius:0, backgroundColor:'transparent'},
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top'}},
+      scales:{x:{title:{display:true,text:'前売り合計枚数'}},y:{title:{display:true,text:'動員数（人）'}}}
+    }
+  });
+  
+  // 対戦相手別集計
+  const opStats = {};
+  pastData.forEach(g => {
+    if (!opStats[g.opponent]) opStats[g.opponent] = {sumAud:0,sumPre:0,count:0};
+    opStats[g.opponent].sumAud += g.actual_audience;
+    opStats[g.opponent].sumPre += g.total_presale;
+    opStats[g.opponent].count++;
+  });
+  const opLabels = Object.keys(opStats);
+  new Chart(document.getElementById('opponentChart'), {
+    type: 'bar',
+    data: {
+      labels: opLabels,
+      datasets: [
+        {label:'平均動員数', data:opLabels.map(k=>Math.round(opStats[k].sumAud/opStats[k].count)), backgroundColor:'#F4792099', borderColor:'#F47920', borderWidth:2, yAxisID:'y'},
+        {label:'平均前売り枚数', data:opLabels.map(k=>Math.round(opStats[k].sumPre/opStats[k].count)), backgroundColor:'#3B82F699', borderColor:'#3B82F6', borderWidth:2, yAxisID:'y'},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top'}},
+      scales:{y:{title:{display:true,text:'人/枚'}}}
+    }
+  });
+}
+
+// ===== その他招待モーダル =====
+let currentOtherDate = null;
+
+function openOtherModal(date, opponent) {
+  currentOtherDate = date;
+  document.getElementById('otherModalDate').textContent = `${date} vs ${opponent}`;
+  const saved = OTHER_VISITORS[date] || {};
+  document.getElementById('otherInput').value = saved.count ?? '';
+  document.getElementById('otherMemo').value  = saved.memo  ?? '';
+  document.getElementById('otherModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('otherInput').focus(), 50);
+}
+
+function closeOtherModal() {
+  document.getElementById('otherModal').style.display = 'none';
+  currentOtherDate = null;
+}
+
+function saveOtherModal() {
+  if (!currentOtherDate) return;
+  const v    = parseInt(document.getElementById('otherInput').value);
+  const memo = document.getElementById('otherMemo').value.trim();
+  if (!isNaN(v) && v > 0) {
+    OTHER_VISITORS[currentOtherDate] = { count: v, memo };
+  } else {
+    delete OTHER_VISITORS[currentOtherDate];
+  }
+  saveOtherVisitors();
+  closeOtherModal();
+  renderUpcoming();
+}
+
+function clearOtherModal() {
+  document.getElementById('otherInput').value = '';
+  document.getElementById('otherMemo').value  = '';
+  if (currentOtherDate) {
+    delete OTHER_VISITORS[currentOtherDate];
+    saveOtherVisitors();
+    closeOtherModal();
+    renderUpcoming();
+  }
+}
+
+document.getElementById('otherModal').addEventListener('click', function(e) {
+  if (e.target === this) closeOtherModal();
+});
+
+// ===== スポンサーモーダル =====
+let currentSponsor = null;
+
+function openSponsorModal(name) {
+  currentSponsor = name;
+  document.getElementById('sponsorModalName').textContent = name;
+  const sd = SPONSOR_DATA[name] || { haiken: null, rate: null };
+  document.getElementById('haikenInput').value = sd.haiken ?? '';
+  document.getElementById('rateInput').value = sd.rate ?? '';
+  updateSponsorCalc();
+  document.getElementById('sponsorModal').style.display = 'flex';
+}
+
+function closeSponsorModal() {
+  document.getElementById('sponsorModal').style.display = 'none';
+  currentSponsor = null;
+}
+
+function updateSponsorCalc() {
+  const h = parseFloat(document.getElementById('haikenInput').value);
+  const r = parseFloat(document.getElementById('rateInput').value);
+  const el = document.getElementById('kammuriCalcResult');
+  if (!isNaN(h) && !isNaN(r) && h > 0 && r > 0) {
+    el.textContent = Math.round(h * r / 100).toLocaleString() + '人';
+    el.style.color = 'var(--orange-dark)';
+  } else {
+    el.textContent = '—';
+    el.style.color = '#9CA3AF';
+  }
+}
+
+function saveSponsorModal() {
+  if (!currentSponsor) return;
+  const h = parseFloat(document.getElementById('haikenInput').value);
+  const r = parseFloat(document.getElementById('rateInput').value);
+  if (!SPONSOR_DATA[currentSponsor]) SPONSOR_DATA[currentSponsor] = {};
+  SPONSOR_DATA[currentSponsor].haiken = isNaN(h) ? null : h;
+  SPONSOR_DATA[currentSponsor].rate   = isNaN(r) ? null : r;
+  saveSponsorData();
+  closeSponsorModal();
+  renderUpcoming();
+}
+
+function resetSponsorModal() {
+  if (!currentSponsor) return;
+  const def = SPONSOR_DEFAULTS[currentSponsor] || { haiken: null, rate: null };
+  SPONSOR_DATA[currentSponsor] = { ...def };
+  saveSponsorData();
+  document.getElementById('haikenInput').value = def.haiken ?? '';
+  document.getElementById('rateInput').value   = def.rate   ?? '';
+  updateSponsorCalc();
+  renderUpcoming();
+}
+
+document.getElementById('sponsorModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSponsorModal();
+});
+
+// ===== 初期化 =====
+(async () => {
+  await loadData();
+  renderSummary();
+  renderUpcoming();
+  renderPast();
+  fetchAllWeather(); // 天気予報を非同期取得（完了後に renderUpcoming が自動再描画）
+})();
+</script>
+</body>
+</html>
