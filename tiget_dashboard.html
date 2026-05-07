@@ -306,6 +306,7 @@ document.getElementById('updateModal').addEventListener('click', function(e) {
               <th style="text-align:right;padding-left:6px">📋 前売実績<br><span style="font-weight:400;font-size:0.7rem;text-transform:none">TIGET（自由+指定）</span></th>
               <th style="text-align:right">📈 前売着地予測</th>
               <th style="text-align:right">🏟️ 来場者予測</th>
+              <th style="text-align:right;white-space:nowrap">🎯 集客目標</th>
             </tr>
           </thead>
           <tbody id="upcomingBody"></tbody>
@@ -344,6 +345,7 @@ document.getElementById('updateModal').addEventListener('click', function(e) {
               <th>有償率</th>
               <th class="col-sep">予測動員</th>
               <th>実績動員</th>
+              <th>🎯 目標</th>
               <th>誤差</th>
               <th>倍率</th>
             </tr>
@@ -456,6 +458,12 @@ async function loadData() {
         OTHER_VISITORS[date] = val;
       }
       localStorage.setItem('tiget_other_visitors', JSON.stringify(OTHER_VISITORS));
+    }
+    if (json.targets) {
+      for (const [date, val] of Object.entries(json.targets)) {
+        GAME_TARGETS[date] = val;
+      }
+      localStorage.setItem('tiget_game_targets', JSON.stringify(GAME_TARGETS));
     }
     recomputeFlags(GAMES);
     const badge = document.getElementById('updateBadge');
@@ -610,8 +618,47 @@ function saveSponsorData() {
 // ===== その他招待データ（試合日付をキーに来場見込み人数を保存）=====
 const OTHER_VISITORS = JSON.parse(localStorage.getItem('tiget_other_visitors') || '{}');
 
+// ===== 集客目標（試合日付をキーに目標人数を保存）=====
+let GAME_TARGETS = JSON.parse(localStorage.getItem('tiget_game_targets') || '{}');
+
 function saveOtherVisitors() {
   localStorage.setItem('tiget_other_visitors', JSON.stringify(OTHER_VISITORS));
+}
+
+// ===== 集客目標 インライン編集 =====
+function startTargetEdit(date, currentVal) {
+  const cell = document.getElementById('targetCell_' + date);
+  if (!cell) return;
+  const val = currentVal != null ? currentVal : '';
+  cell.innerHTML = `<input id="targetInput_${date}" type="number" min="0" step="100" value="${val}"
+    style="width:80px;border:1.5px solid #F47920;border-radius:4px;padding:3px 6px;font-size:0.85rem;text-align:right;outline:none"
+    onkeydown="if(event.key==='Enter'){saveTargetFromInput('${date}');event.preventDefault()}else if(event.key==='Escape'){renderUpcoming();renderPast()}"
+    onblur="saveTargetFromInput('${date}')"
+    onclick="event.stopPropagation()"
+    onfocus="this.select()">`;
+  setTimeout(() => {
+    const inp = document.getElementById('targetInput_' + date);
+    if (inp) inp.focus();
+  }, 20);
+}
+
+function saveTargetFromInput(date) {
+  const inp = document.getElementById('targetInput_' + date);
+  if (!inp || inp._saved) return;
+  inp._saved = true;
+  const v = parseInt(inp.value);
+  if (!isNaN(v) && v > 0) {
+    GAME_TARGETS[date] = v;
+  } else if (inp.value === '' || v === 0) {
+    delete GAME_TARGETS[date];
+  } else {
+    renderUpcoming(); renderPast(); return;
+  }
+  localStorage.setItem('tiget_game_targets', JSON.stringify(GAME_TARGETS));
+  renderUpcoming();
+  renderPast();
+  renderSummary();
+  if (getDashToken()) pushDashToGitHub('集客目標を更新: ' + date);
 }
 
 function getOtherVisitors(date) {
@@ -710,18 +757,31 @@ function renderSummary() {
   const completedCount = GAMES.filter(g => g.is_past && !g.is_cancelled).length;
   const cancelledCount = GAMES.filter(g => g.is_cancelled).length;
 
+  // 集客目標合計と達成率
+  const allTargetGames = GAMES.filter(g => !g.is_cancelled && GAME_TARGETS[g.date] != null);
+  const totalTarget = allTargetGames.reduce((s,g) => s + GAME_TARGETS[g.date], 0);
+  const pastTargetGames = allTargetGames.filter(g => g.is_past && g.actual_audience);
+  const pastTargetSum = pastTargetGames.reduce((s,g) => s + GAME_TARGETS[g.date], 0);
+  const pastActualForTarget = pastTargetGames.reduce((s,g) => s + g.actual_audience, 0);
+  const achieveRate = pastTargetSum > 0 ? Math.round(pastActualForTarget / pastTargetSum * 100) : null;
+  const targetCardSub = totalTarget > 0
+    ? (achieveRate !== null ? `達成率 ${achieveRate}%（${pastTargetGames.length}試合終了）` : `${allTargetGames.length}試合に目標設定済み`)
+    : '目標未設定';
+  const targetColor = achieveRate === null ? 'var(--orange-dark)' : achieveRate >= 100 ? 'var(--green)' : achieveRate >= 80 ? 'var(--orange-dark)' : 'var(--red)';
+
   const cards = [
-    {label:'今季ホーム試合数', value: completedCount + '試合', sub:'中止 ' + cancelledCount + '試合'},
-    {label:'完了試合 累計動員', value: totalAudience.toLocaleString() + '人', sub: pastGames.length + '試合分'},
-    {label:'完了試合 平均動員', value: avgAudience.toLocaleString() + '人', sub:'1試合あたり'},
-    {label:'最多動員試合', value: maxGame ? maxGame.actual_audience.toLocaleString()+'人' : '-', sub: maxGame ? maxGame.date + ' vs ' + maxGame.opponent : ''},
+    {label:'今季ホーム試合数', value: completedCount + '試合', sub:'中止 ' + cancelledCount + '試合', color: null},
+    {label:'完了試合 累計動員', value: totalAudience.toLocaleString() + '人', sub: pastGames.length + '試合分', color: null},
+    {label:'完了試合 平均動員', value: avgAudience.toLocaleString() + '人', sub:'1試合あたり', color: null},
+    {label:'最多動員試合', value: maxGame ? maxGame.actual_audience.toLocaleString()+'人' : '-', sub: maxGame ? maxGame.date + ' vs ' + maxGame.opponent : '', color: null},
+    {label:'🎯 集客目標合計', value: totalTarget > 0 ? totalTarget.toLocaleString() + '人' : '—', sub: targetCardSub, color: targetColor},
   ];
   
   const wrap = document.getElementById('summaryCards');
   wrap.innerHTML = cards.map(c => `
     <div class="card">
       <div class="card-label">${c.label}</div>
-      <div class="card-value">${c.value}</div>
+      <div class="card-value" style="${c.color ? 'color:'+c.color : ''}">${c.value}</div>
       <div class="card-sub">${c.sub}</div>
     </div>
   `).join('');
@@ -804,6 +864,13 @@ function renderUpcoming() {
         ${otherEditBtn}`;
     }
 
+    // 集客目標セル
+    const tgt = GAME_TARGETS[g.date];
+    const targetCellContent = tgt != null
+      ? `<span style="font-weight:700;color:#059669">${tgt.toLocaleString()}人</span><span style="font-size:0.65rem;color:#9CA3AF;margin-left:2px">✏️</span>`
+      : `<button onclick="event.stopPropagation();startTargetEdit('${g.date}',null)" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 8px;white-space:nowrap">＋ 目標設定</button>`;
+    const targetCell = `<div id="targetCell_${g.date}" onclick="startTargetEdit('${g.date}',${tgt != null ? tgt : 'null'})" style="cursor:pointer;text-align:right;min-width:80px">${targetCellContent}</div>`;
+
     return `
       <tr ${rowClass}>
         <td style="white-space:nowrap">${dateBadge} ${dowBadge}</td>
@@ -817,6 +884,7 @@ function renderUpcoming() {
         <td style="text-align:right;padding-left:6px">${currentCell}</td>
         <td style="text-align:right">${projCell}</td>
         <td style="text-align:right">${predCell}</td>
+        <td style="text-align:right">${targetCell}</td>
       </tr>
     `;
   }).join('');
@@ -837,7 +905,7 @@ function renderPast() {
           <td>${dowBadgePast}</td>
           <td style="font-weight:600;color:${OPPONENT_COLORS[g.opponent]||'#9CA3AF'}">${g.opponent}</td>
           <td style="white-space:nowrap">${g.kammuri ? `<span class="badge badge-sponsor">👑${g.kammuri}</span>` : ''}</td>
-          <td class="col-sep" colspan="7" style="text-align:center"><span class="badge badge-red">試合中止</span></td>
+          <td class="col-sep" colspan="8" style="text-align:center"><span class="badge badge-red">試合中止</span></td>
         </tr>
       `;
     }
@@ -880,6 +948,14 @@ function renderPast() {
         </td>
         <td style="text-align:right;font-weight:700;font-size:1.02rem">
           ${hasActual ? g.actual_audience.toLocaleString()+'人' : '<span class="badge badge-gray">未掲載</span>'}
+        </td>
+        <td style="text-align:right">
+          ${(()=>{
+            const pt = GAME_TARGETS[g.date];
+            if (pt == null) return `<div id="targetCell_${g.date}"><button onclick="event.stopPropagation();startTargetEdit('${g.date}',null)" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 6px;white-space:nowrap">＋</button></div>`;
+            const vs = g.actual_audience != null ? (g.actual_audience >= pt ? '<span style="color:#059669">✓</span> ' : '<span style="color:#EF4444">↓</span> ') : '';
+            return `<div id="targetCell_${g.date}" onclick="startTargetEdit('${g.date}',${pt})" style="cursor:pointer;white-space:nowrap">${vs}<span style="font-weight:600">${pt.toLocaleString()}人</span></div>`;
+          })()}
         </td>
         <td style="text-align:right">${errCell}</td>
         <td style="text-align:right;color:#9CA3AF;font-size:0.83rem">${ratio}x</td>
@@ -1234,8 +1310,9 @@ async function pushDashToGitHub(commitMsg) {
     const latest = JSON.parse(new TextDecoder('utf-8').decode(bytes));
 
     // ローカルの変更を最新データに反映
-    latest.sponsors      = JSON.parse(JSON.stringify(SPONSOR_DATA));
+    latest.sponsors       = JSON.parse(JSON.stringify(SPONSOR_DATA));
     latest.other_visitors = JSON.parse(JSON.stringify(OTHER_VISITORS));
+    latest.targets        = JSON.parse(JSON.stringify(GAME_TARGETS));
     const vm = (latest.version || '2026-v0').match(/v(\d+)$/);
     latest.version      = `2026-v${(parseInt(vm?.[1] || 0) + 1)}`;
     latest.last_updated = new Date().toISOString().slice(0, 10);
