@@ -122,9 +122,27 @@
         style="background:rgba(255,255,255,0.95);color:#C85D00;border:none;padding:7px 16px;border-radius:20px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s">
         ✏️ 前売り枚数を手動更新
       </button>
+      <div style="position:relative">
+        <button id="tokenBtn" onclick="toggleTokenPanel()"
+          style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:7px 12px;border-radius:20px;font-size:0.82rem;cursor:pointer"
+          title="GitHubトークン設定（冠・招待の変更を全員と共有）">🔑</button>
+        <div id="tokenPanel" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:white;border-radius:12px;padding:16px;width:300px;box-shadow:0 6px 24px rgba(0,0,0,0.18);z-index:300;border:1px solid #E5E7EB">
+          <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:6px">🔑 GitHubトークン設定</div>
+          <div style="font-size:0.75rem;color:#6B7280;margin-bottom:10px;line-height:1.5">冠試合・招待人数などの変更をチーム全員と共有するために必要です。一度設定すれば次回から不要です。</div>
+          <div style="display:flex;gap:6px">
+            <input id="dashTokenInput" type="password" placeholder="ghp_xxxx..."
+              style="flex:1;border:1.5px solid #E5E7EB;border-radius:6px;padding:7px 10px;font-size:0.78rem;font-family:monospace;outline:none">
+            <button onclick="saveDashToken()" style="background:#F47920;color:white;border:none;padding:7px 12px;border-radius:6px;font-size:0.8rem;font-weight:700;cursor:pointer">保存</button>
+          </div>
+          <div id="dashTokenStatus" style="font-size:0.75rem;margin-top:7px;color:#9CA3AF"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- トースト通知 -->
+<div id="pushToast" style="display:none;position:fixed;bottom:20px;right:20px;color:white;padding:10px 18px;border-radius:8px;font-size:0.85rem;z-index:2000;box-shadow:0 4px 12px rgba(0,0,0,0.25);font-weight:500"></div>
 
 <!-- 更新モーダル -->
 <div id="updateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
@@ -194,7 +212,7 @@
 <div id="sponsorModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
   <div style="background:white;border-radius:16px;padding:28px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
     <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px">👑 <span id="sponsorModalName"></span> 冠設定</div>
-    <div style="font-size:0.8rem;color:#6B7280;margin-bottom:20px">配券数と着券率を入力すると冠来場見込みが自動計算されます。設定はブラウザに保存されます。</div>
+    <div style="font-size:0.8rem;color:#6B7280;margin-bottom:20px">配券数と着券率を入力すると冠来場見込みが自動計算されます。🔑トークン設定済みの場合はチーム全員に共有されます。</div>
     <div style="display:grid;gap:16px">
       <div>
         <label style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px">配券数（配布枚数）</label>
@@ -423,6 +441,21 @@ async function loadData() {
       if (json.models.weekend) MODEL_WEEKEND = Object.assign(MODEL_WEEKEND, json.models.weekend, {label: "休日"});
       if (json.models.weekday) MODEL_WEEKDAY = Object.assign(MODEL_WEEKDAY, json.models.weekday, {label: "平日"});
       MODEL = MODEL_WEEKEND;
+    }
+    // sponsorsとother_visitorsをJSONから読み込み（localStorageより優先）
+    if (json.sponsors) {
+      for (const [name, val] of Object.entries(json.sponsors)) {
+        if (val && (val.haiken != null || val.rate != null)) {
+          SPONSOR_DATA[name] = val;
+        }
+      }
+      localStorage.setItem('tiget_sponsor_data', JSON.stringify(SPONSOR_DATA));
+    }
+    if (json.other_visitors) {
+      for (const [date, val] of Object.entries(json.other_visitors)) {
+        OTHER_VISITORS[date] = val;
+      }
+      localStorage.setItem('tiget_other_visitors', JSON.stringify(OTHER_VISITORS));
     }
     recomputeFlags(GAMES);
     const badge = document.getElementById('updateBadge');
@@ -1039,26 +1072,30 @@ function closeOtherModal() {
 
 function saveOtherModal() {
   if (!currentOtherDate) return;
+  const date = currentOtherDate;
   const v    = parseInt(document.getElementById('otherInput').value);
   const memo = document.getElementById('otherMemo').value.trim();
   if (!isNaN(v) && v > 0) {
-    OTHER_VISITORS[currentOtherDate] = { count: v, memo };
+    OTHER_VISITORS[date] = { count: v, memo };
   } else {
-    delete OTHER_VISITORS[currentOtherDate];
+    delete OTHER_VISITORS[date];
   }
   saveOtherVisitors();
   closeOtherModal();
   renderUpcoming();
+  if (getDashToken()) pushDashToGitHub(`招待設定を更新: ${date}`);
 }
 
 function clearOtherModal() {
   document.getElementById('otherInput').value = '';
   document.getElementById('otherMemo').value  = '';
   if (currentOtherDate) {
-    delete OTHER_VISITORS[currentOtherDate];
+    const date = currentOtherDate;
+    delete OTHER_VISITORS[date];
     saveOtherVisitors();
     closeOtherModal();
     renderUpcoming();
+    if (getDashToken()) pushDashToGitHub(`招待設定をクリア: ${date}`);
   }
 }
 
@@ -1099,14 +1136,16 @@ function updateSponsorCalc() {
 
 function saveSponsorModal() {
   if (!currentSponsor) return;
+  const name = currentSponsor;
   const h = parseFloat(document.getElementById('haikenInput').value);
   const r = parseFloat(document.getElementById('rateInput').value);
-  if (!SPONSOR_DATA[currentSponsor]) SPONSOR_DATA[currentSponsor] = {};
-  SPONSOR_DATA[currentSponsor].haiken = isNaN(h) ? null : h;
-  SPONSOR_DATA[currentSponsor].rate   = isNaN(r) ? null : r;
+  if (!SPONSOR_DATA[name]) SPONSOR_DATA[name] = {};
+  SPONSOR_DATA[name].haiken = isNaN(h) ? null : h;
+  SPONSOR_DATA[name].rate   = isNaN(r) ? null : r;
   saveSponsorData();
   closeSponsorModal();
   renderUpcoming();
+  if (getDashToken()) pushDashToGitHub(`冠設定を更新: ${name}`);
 }
 
 function resetSponsorModal() {
@@ -1124,8 +1163,120 @@ document.getElementById('sponsorModal').addEventListener('click', function(e) {
   if (e.target === this) closeSponsorModal();
 });
 
+// ===== GitHub トークン管理 =====
+const DASH_API = 'https://api.github.com/repos/55oisixniigata/tiget-dashboard/contents/tiget_data.json';
+
+function getDashToken() {
+  return localStorage.getItem('dash_gh_token') || '';
+}
+function saveDashToken() {
+  const t = document.getElementById('dashTokenInput').value.trim();
+  if (!t) return;
+  localStorage.setItem('dash_gh_token', t);
+  updateDashTokenStatus();
+  closeTokenPanel();
+  showToast('✅ トークンを保存しました', 'ok');
+}
+function updateDashTokenStatus() {
+  const t = getDashToken();
+  const el = document.getElementById('dashTokenStatus');
+  const btn = document.getElementById('tokenBtn');
+  if (!el || !btn) return;
+  if (t) {
+    el.textContent = '✅ トークン設定済み — 保存した変更はチームで共有されます';
+    el.style.color = '#059669';
+    btn.style.background = 'rgba(255,255,255,0.35)';
+    document.getElementById('dashTokenInput').value = t;
+  } else {
+    el.textContent = '未設定 — 設定するとチームで変更を共有できます';
+    el.style.color = '#9CA3AF';
+    btn.style.background = 'rgba(255,255,255,0.15)';
+  }
+}
+function toggleTokenPanel() {
+  const panel = document.getElementById('tokenPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+function closeTokenPanel() {
+  document.getElementById('tokenPanel').style.display = 'none';
+}
+document.addEventListener('click', function(e) {
+  const panel = document.getElementById('tokenPanel');
+  const btn   = document.getElementById('tokenBtn');
+  if (panel && btn && panel.style.display !== 'none') {
+    if (!panel.contains(e.target) && e.target !== btn) {
+      panel.style.display = 'none';
+    }
+  }
+});
+
+// ===== GitHub Push =====
+async function pushDashToGitHub(commitMsg) {
+  const token = getDashToken();
+  if (!token) {
+    showToast('⚠️ 🔑 からGitHubトークンを設定してください', 'warn');
+    return false;
+  }
+  showToast('☁️ GitHubに保存中...', 'info');
+  try {
+    // 最新のSHAとデータをGitHub APIから取得
+    const metaRes = await fetch(DASH_API, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!metaRes.ok) throw new Error(`SHA取得失敗 (${metaRes.status})`);
+    const meta = await metaRes.json();
+    const sha = meta.sha;
+
+    // Base64デコードして最新JSONを取得
+    const binary = atob(meta.content.replace(/\n/g, ''));
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const latest = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+
+    // ローカルの変更を最新データに反映
+    latest.sponsors      = JSON.parse(JSON.stringify(SPONSOR_DATA));
+    latest.other_visitors = JSON.parse(JSON.stringify(OTHER_VISITORS));
+    const vm = (latest.version || '2026-v0').match(/v(\d+)$/);
+    latest.version      = `2026-v${(parseInt(vm?.[1] || 0) + 1)}`;
+    latest.last_updated = new Date().toISOString().slice(0, 10);
+
+    // UTF-8 Base64エンコード
+    const jsonStr  = JSON.stringify(latest);
+    const encoded  = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g,
+      (_, p1) => String.fromCharCode(parseInt(p1, 16))));
+
+    const res = await fetch(DASH_API, {
+      method: 'PUT',
+      headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: commitMsg || '設定を更新', content: encoded, sha })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || res.statusText);
+    }
+    showToast('✅ GitHubに保存しました（1〜2分で全員に反映）', 'ok');
+    return true;
+  } catch(e) {
+    showToast(`❌ 保存失敗: ${e.message}`, 'err');
+    return false;
+  }
+}
+
+// ===== トースト通知 =====
+function showToast(msg, type = 'info') {
+  const toast = document.getElementById('pushToast');
+  if (!toast) return;
+  toast.textContent = msg;
+  const bg = { ok: '#065F46', err: '#7F1D1D', warn: '#92400E', info: '#1F2937' };
+  toast.style.background = bg[type] || bg.info;
+  toast.style.display = 'block';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.display = 'none'; }, 5000);
+}
+
 // ===== 初期化 =====
 (async () => {
+  updateDashTokenStatus();
   await loadData();
   renderSummary();
   renderUpcoming();
