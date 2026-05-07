@@ -346,7 +346,7 @@ document.getElementById('updateModal').addEventListener('click', function(e) {
               <th>有償率</th>
               <th class="col-sep">予測動員</th>
               <th>実績動員</th>
-              <th>🎯 目標</th>
+              <th style="text-align:right;white-space:nowrap">🎯 目標</th>
               <th>誤差</th>
               <th>倍率</th>
             </tr>
@@ -467,7 +467,14 @@ async function loadData() {
       }
       localStorage.setItem('tiget_game_targets', JSON.stringify(GAME_TARGETS));
     }
+    if (json.kammuri_overrides) {
+      for (const [date, val] of Object.entries(json.kammuri_overrides)) {
+        KAMMURI_OVERRIDES[date] = val; // null = 冠なし override
+      }
+      localStorage.setItem('tiget_kammuri_overrides', JSON.stringify(KAMMURI_OVERRIDES));
+    }
     recomputeFlags(GAMES);
+    applyKammuriOverrides();
     const badge = document.getElementById('updateBadge');
     if (badge) badge.textContent = '📅 ' + (json.last_updated || TODAY) + ' 更新';
     return true;
@@ -622,6 +629,73 @@ const OTHER_VISITORS = JSON.parse(localStorage.getItem('tiget_other_visitors') |
 
 // ===== 集客目標（試合日付をキーに目標人数を保存）=====
 let GAME_TARGETS = JSON.parse(localStorage.getItem('tiget_game_targets') || '{}');
+
+// ===== 冠試合オーバーライド（試合日付をキーに冠スポンサー名 or null）=====
+let KAMMURI_OVERRIDES = JSON.parse(localStorage.getItem('tiget_kammuri_overrides') || '{}');
+
+// GAMES配列に冠オーバーライドを適用（loadData後 / setKammuri後に呼ぶ）
+function applyKammuriOverrides() {
+  GAMES.forEach(g => {
+    if (g.date in KAMMURI_OVERRIDES) {
+      g.kammuri = KAMMURI_OVERRIDES[g.date]; // null or string
+    }
+  });
+}
+
+// 冠設定を保存して両テーブルを再描画
+function setKammuri(date, sponsorName) {
+  KAMMURI_OVERRIDES[date] = sponsorName; // null = 冠なし
+  localStorage.setItem('tiget_kammuri_overrides', JSON.stringify(KAMMURI_OVERRIDES));
+  applyKammuriOverrides();
+  renderUpcoming();
+  renderPast();
+  if (getDashToken()) pushDashToGitHub('冠試合を更新: ' + date + (sponsorName ? ' → ' + sponsorName : ' → 削除'));
+}
+
+// 冠ピッカーポップアップを開閉
+function openKammuriPicker(date) {
+  document.querySelectorAll('.kammuri-picker-popup').forEach(p => p.remove());
+  const cell = document.getElementById('kammuriCell_' + date);
+  if (!cell) return;
+  const game = GAMES.find(g => g.date === date);
+  const current = game ? game.kammuri : null;
+  const sponsors = Object.keys(SPONSOR_DEFAULTS);
+
+  const popup = document.createElement('div');
+  popup.className = 'kammuri-picker-popup';
+  popup.style.cssText = 'position:absolute;left:0;top:100%;background:white;border:1px solid #E5E7EB;border-radius:8px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,0.18);z-index:200;min-width:170px;';
+
+  sponsors.forEach(name => {
+    const item = document.createElement('div');
+    const active = name === current;
+    item.style.cssText = `padding:8px 12px;cursor:pointer;border-radius:5px;font-size:0.82rem;display:flex;align-items:center;gap:7px;font-weight:${active ? '700' : '400'}`;
+    item.innerHTML = `<span style="color:#7C3AED">👑</span><span style="flex:1">${name}</span>${active ? '<span style="color:#059669;font-size:0.9rem">✓</span>' : ''}`;
+    item.onmouseenter = () => item.style.background = '#F5F3FF';
+    item.onmouseleave = () => item.style.background = '';
+    item.onclick = e => { e.stopPropagation(); setKammuri(date, name); popup.remove(); };
+    popup.appendChild(item);
+  });
+
+  if (current) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'border-top:1px solid #F3F4F6;margin:4px 0';
+    popup.appendChild(sep);
+    const clearItem = document.createElement('div');
+    clearItem.style.cssText = 'padding:8px 12px;cursor:pointer;border-radius:5px;font-size:0.82rem;color:#EF4444';
+    clearItem.textContent = '✕ 冠なしに変更';
+    clearItem.onmouseenter = () => clearItem.style.background = '#FEF2F2';
+    clearItem.onmouseleave = () => clearItem.style.background = '';
+    clearItem.onclick = e => { e.stopPropagation(); setKammuri(date, null); popup.remove(); };
+    popup.appendChild(clearItem);
+  }
+
+  cell.style.position = 'relative';
+  cell.appendChild(popup);
+  setTimeout(() => {
+    const close = e => { if (!popup.contains(e.target)) { popup.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 0);
+}
 
 function saveOtherVisitors() {
   localStorage.setItem('tiget_other_visitors', JSON.stringify(OTHER_VISITORS));
@@ -800,9 +874,11 @@ function renderUpcoming() {
     const weatherCell = wx
       ? `<span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap" title="${wx.label} / 最高${wx.temp}℃ / 降水${wx.precip}mm"><span style="font-size:1rem">${wx.icon}</span><span style="font-size:0.78rem;color:#374151;font-weight:600">${wx.temp}℃</span></span>`
       : (daysLeft <= 14 ? `<span style="font-size:0.72rem;color:#9CA3AF">取得中</span>` : `<span style="color:#D1D5DB;font-size:0.72rem">—</span>`);
-    const kammuriLabel = g.kammuri ? `<span class="badge badge-sponsor">👑${g.kammuri}</span>` : '';
+    const kammuriLabel = g.kammuri
+      ? `<span class="badge badge-sponsor" onclick="event.stopPropagation();openKammuriPicker('${g.date}')" style="cursor:pointer" title="クリックして変更">👑${g.kammuri}</span>`
+      : `<button onclick="event.stopPropagation();openKammuriPicker('${g.date}')" style="background:none;border:1px dashed #C4B5FD;border-radius:4px;cursor:pointer;font-size:0.68rem;color:#7C3AED;padding:1px 6px;white-space:nowrap" title="冠試合を設定">＋ 冠</button>`;
     const editBtn = g.kammuri
-      ? `<button onclick="openSponsorModal('${g.kammuri}')" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--gray);padding:0 3px;vertical-align:middle" title="冠設定を編集">✏️</button>`
+      ? `<button onclick="openSponsorModal('${g.kammuri}')" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--gray);padding:0 3px;vertical-align:middle" title="配券数・着券率を編集">✏️</button>`
       : '';
 
     const bd = calcBreakdown(g);
@@ -864,11 +940,9 @@ function renderUpcoming() {
       <tr ${rowClass}>
         <td style="white-space:nowrap">${dateBadge} ${dowBadge}</td>
         <td style="font-size:0.85rem">${g.time}</td>
-        <td>
-          <span style="color:${opColor};font-weight:700">${g.opponent}</span>
-        </td>
+        <td style="white-space:nowrap"><span style="color:${opColor};font-weight:700">${g.opponent}</span></td>
         <td style="white-space:nowrap">${venueCell}</td>
-        <td style="white-space:nowrap">${kammuriLabel}${editBtn}</td>
+        <td id="kammuriCell_${g.date}" style="white-space:nowrap">${kammuriLabel}${editBtn}</td>
         <td style="white-space:nowrap;text-align:center">${weatherCell}</td>
         <td style="text-align:right;padding-left:6px">${currentCell}</td>
         <td style="text-align:right">${projCell}</td>
@@ -912,7 +986,7 @@ function renderPast() {
         <tr style="color:#9CA3AF">
           <td>${g.date}</td>
           <td>${dowBadgePast}</td>
-          <td style="font-weight:600;color:${OPPONENT_COLORS[g.opponent]||'#9CA3AF'}">${g.opponent}</td>
+          <td style="font-weight:600;color:${OPPONENT_COLORS[g.opponent]||'#9CA3AF'};white-space:nowrap">${g.opponent}</td>
           <td style="white-space:nowrap">${g.kammuri ? `<span class="badge badge-sponsor">👑${g.kammuri}</span>` : ''}</td>
           <td class="col-sep" colspan="8" style="text-align:center"><span class="badge badge-red">試合中止</span></td>
         </tr>
@@ -945,7 +1019,7 @@ function renderPast() {
       <tr>
         <td style="color:#6B7280;font-size:0.85rem">${g.date}</td>
         <td>${dowBadgePast}</td>
-        <td style="font-weight:700;color:${OPPONENT_COLORS[g.opponent]||'#374151'}">${g.opponent}</td>
+        <td style="font-weight:700;color:${OPPONENT_COLORS[g.opponent]||'#374151'};white-space:nowrap">${g.opponent}</td>
         <td style="white-space:nowrap">${g.kammuri ? `<span class="badge badge-sponsor">👑${g.kammuri}</span>` : ''}</td>
         <td class="col-sep" style="text-align:right">${g.total_presale.toLocaleString()}枚</td>
         <td style="text-align:right">${presalePctCell}</td>
@@ -1345,9 +1419,10 @@ async function pushDashToGitHub(commitMsg) {
     const latest = JSON.parse(new TextDecoder('utf-8').decode(bytes));
 
     // ローカルの変更を最新データに反映
-    latest.sponsors       = JSON.parse(JSON.stringify(SPONSOR_DATA));
-    latest.other_visitors = JSON.parse(JSON.stringify(OTHER_VISITORS));
-    latest.targets        = JSON.parse(JSON.stringify(GAME_TARGETS));
+    latest.sponsors          = JSON.parse(JSON.stringify(SPONSOR_DATA));
+    latest.other_visitors    = JSON.parse(JSON.stringify(OTHER_VISITORS));
+    latest.targets           = JSON.parse(JSON.stringify(GAME_TARGETS));
+    latest.kammuri_overrides = JSON.parse(JSON.stringify(KAMMURI_OVERRIDES));
     const vm = (latest.version || '2026-v0').match(/v(\d+)$/);
     latest.version      = `2026-v${(parseInt(vm?.[1] || 0) + 1)}`;
     latest.last_updated = new Date().toISOString().slice(0, 10);
