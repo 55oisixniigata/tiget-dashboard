@@ -310,6 +310,7 @@ document.getElementById('updateModal').addEventListener('click', function(e) {
             </tr>
           </thead>
           <tbody id="upcomingBody"></tbody>
+          <tfoot id="upcomingFoot"></tfoot>
         </table>
       </div>
     </div>
@@ -351,6 +352,7 @@ document.getElementById('updateModal').addEventListener('click', function(e) {
             </tr>
           </thead>
           <tbody id="pastBody"></tbody>
+          <tfoot id="pastFoot"></tfoot>
         </table>
       </div>
     </div>
@@ -757,31 +759,18 @@ function renderSummary() {
   const completedCount = GAMES.filter(g => g.is_past && !g.is_cancelled).length;
   const cancelledCount = GAMES.filter(g => g.is_cancelled).length;
 
-  // 集客目標合計と達成率
-  const allTargetGames = GAMES.filter(g => !g.is_cancelled && GAME_TARGETS[g.date] != null);
-  const totalTarget = allTargetGames.reduce((s,g) => s + GAME_TARGETS[g.date], 0);
-  const pastTargetGames = allTargetGames.filter(g => g.is_past && g.actual_audience);
-  const pastTargetSum = pastTargetGames.reduce((s,g) => s + GAME_TARGETS[g.date], 0);
-  const pastActualForTarget = pastTargetGames.reduce((s,g) => s + g.actual_audience, 0);
-  const achieveRate = pastTargetSum > 0 ? Math.round(pastActualForTarget / pastTargetSum * 100) : null;
-  const targetCardSub = totalTarget > 0
-    ? (achieveRate !== null ? `達成率 ${achieveRate}%（${pastTargetGames.length}試合終了）` : `${allTargetGames.length}試合に目標設定済み`)
-    : '目標未設定';
-  const targetColor = achieveRate === null ? 'var(--orange-dark)' : achieveRate >= 100 ? 'var(--green)' : achieveRate >= 80 ? 'var(--orange-dark)' : 'var(--red)';
-
   const cards = [
-    {label:'今季ホーム試合数', value: completedCount + '試合', sub:'中止 ' + cancelledCount + '試合', color: null},
-    {label:'完了試合 累計動員', value: totalAudience.toLocaleString() + '人', sub: pastGames.length + '試合分', color: null},
-    {label:'完了試合 平均動員', value: avgAudience.toLocaleString() + '人', sub:'1試合あたり', color: null},
-    {label:'最多動員試合', value: maxGame ? maxGame.actual_audience.toLocaleString()+'人' : '-', sub: maxGame ? maxGame.date + ' vs ' + maxGame.opponent : '', color: null},
-    {label:'🎯 集客目標合計', value: totalTarget > 0 ? totalTarget.toLocaleString() + '人' : '—', sub: targetCardSub, color: targetColor},
+    {label:'今季ホーム試合数', value: completedCount + '試合', sub:'中止 ' + cancelledCount + '試合'},
+    {label:'完了試合 累計動員', value: totalAudience.toLocaleString() + '人', sub: pastGames.length + '試合分'},
+    {label:'完了試合 平均動員', value: avgAudience.toLocaleString() + '人', sub:'1試合あたり'},
+    {label:'最多動員試合', value: maxGame ? maxGame.actual_audience.toLocaleString()+'人' : '-', sub: maxGame ? maxGame.date + ' vs ' + maxGame.opponent : ''},
   ];
   
   const wrap = document.getElementById('summaryCards');
   wrap.innerHTML = cards.map(c => `
     <div class="card">
       <div class="card-label">${c.label}</div>
-      <div class="card-value" style="${c.color ? 'color:'+c.color : ''}">${c.value}</div>
+      <div class="card-value">${c.value}</div>
       <div class="card-sub">${c.sub}</div>
     </div>
   `).join('');
@@ -888,6 +877,26 @@ function renderUpcoming() {
       </tr>
     `;
   }).join('');
+
+  // フッター：集客目標合計
+  const upcomingTargetSum = upcoming.reduce((s,g) => s + (GAME_TARGETS[g.date] || 0), 0);
+  const upcomingWithTarget = upcoming.filter(g => GAME_TARGETS[g.date] != null).length;
+  const foot = document.getElementById('upcomingFoot');
+  if (foot) {
+    if (upcomingWithTarget > 0) {
+      foot.innerHTML = `
+        <tr style="background:#F0FDF4;border-top:2px solid #86EFAC">
+          <td colspan="9" style="text-align:right;font-size:0.82rem;color:#166534;padding:10px 16px;font-weight:600">
+            🎯 今後の試合 集客目標合計（${upcomingWithTarget}試合分）
+          </td>
+          <td style="text-align:right;padding:10px 16px;font-weight:700;font-size:1.05rem;color:#166534;white-space:nowrap">
+            ${upcomingTargetSum.toLocaleString()}人
+          </td>
+        </tr>`;
+    } else {
+      foot.innerHTML = '';
+    }
+  }
 }
 
 // ===== 実績テーブル =====
@@ -962,6 +971,32 @@ function renderPast() {
       </tr>
     `;
   }).join('');
+
+  // フッター：集客目標合計 + 達成率
+  const pastNonCancelled = past.filter(g => !g.is_cancelled);
+  const pastTargetGames = pastNonCancelled.filter(g => GAME_TARGETS[g.date] != null);
+  const pastTargetSum = pastTargetGames.reduce((s,g) => s + GAME_TARGETS[g.date], 0);
+  const pastActualSum = pastTargetGames.reduce((s,g) => s + (g.actual_audience || 0), 0);
+  const achieveRate = (pastTargetSum > 0 && pastActualSum > 0) ? Math.round(pastActualSum / pastTargetSum * 100) : null;
+  const pfoot = document.getElementById('pastFoot');
+  if (pfoot) {
+    if (pastTargetGames.length > 0) {
+      const rateColor = achieveRate === null ? '#6B7280' : achieveRate >= 100 ? '#059669' : achieveRate >= 80 ? '#D97706' : '#DC2626';
+      const rateStr = achieveRate !== null ? ` <span style="color:${rateColor};font-weight:700">（達成率 ${achieveRate}%）</span>` : '';
+      pfoot.innerHTML = `
+        <tr style="background:#F0FDF4;border-top:2px solid #86EFAC">
+          <td colspan="9" style="text-align:right;font-size:0.82rem;color:#166534;padding:10px 16px;font-weight:600">
+            🎯 完了試合 集客目標合計（${pastTargetGames.length}試合分）
+          </td>
+          <td style="text-align:right;padding:10px 16px;font-weight:700;font-size:1.0rem;color:#166534;white-space:nowrap">
+            ${pastTargetSum.toLocaleString()}人${rateStr}
+          </td>
+          <td colspan="2"></td>
+        </tr>`;
+    } else {
+      pfoot.innerHTML = '';
+    }
+  }
 }
 
 // ===== チャート =====
