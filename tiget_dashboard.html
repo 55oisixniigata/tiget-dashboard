@@ -361,11 +361,11 @@ document.getElementById('updateModal').addEventListener('click', function(e) {
             <tr>
               <th>日付</th>
               <th style="width:1%;padding-left:4px;padding-right:8px"></th>
-              <th>時刻</th>
-              <th>対戦相手</th>
-              <th style="white-space:nowrap">球場</th>
-              <th style="white-space:nowrap">冠試合</th>
-              <th style="white-space:nowrap">天気</th>
+              <th style="text-align:center">時刻</th>
+              <th style="text-align:center">対戦相手</th>
+              <th style="text-align:center;white-space:nowrap">球場</th>
+              <th style="text-align:center;white-space:nowrap">冠試合</th>
+              <th style="text-align:center;white-space:nowrap">天気</th>
               <th style="text-align:right;padding-left:6px">📋 前売実績<br><span style="font-weight:400;font-size:0.7rem;text-transform:none">TIGET（自由+指定）</span></th>
               <th style="text-align:right">📈 前売着地予測</th>
               <th style="text-align:right">🏟️ 来場者予測</th>
@@ -1118,10 +1118,10 @@ function renderUpcoming() {
       <tr ${rowClass}>
         <td style="white-space:nowrap">${dateBadge}</td>
         <td style="white-space:nowrap;padding-left:4px;padding-right:8px">${dowBadge}</td>
-        <td style="font-size:0.85rem">${g.time}</td>
-        <td style="white-space:nowrap"><span style="color:${opColor};font-weight:700">${g.opponent}</span></td>
-        <td style="white-space:nowrap">${venueCell}</td>
-        <td id="kammuriCell_${g.date}" style="white-space:nowrap">${kammuriLabel}${editBtn}</td>
+        <td style="font-size:0.85rem;text-align:center">${g.time}</td>
+        <td style="white-space:nowrap;text-align:center"><span style="color:${opColor};font-weight:700">${g.opponent}</span></td>
+        <td style="white-space:nowrap;text-align:center">${venueCell}</td>
+        <td id="kammuriCell_${g.date}" style="white-space:nowrap;text-align:center">${kammuriLabel}${editBtn}</td>
         <td style="white-space:nowrap;text-align:center">${weatherCell}</td>
         <td style="text-align:right;padding-left:6px">${currentCell}</td>
         <td style="text-align:right">${projCell}</td>
