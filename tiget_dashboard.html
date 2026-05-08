@@ -54,9 +54,10 @@
   th { background: #F9FAFB; padding: 11px 16px; text-align: left; font-size: 0.78rem; font-weight: 600; color: var(--gray); text-transform: uppercase; white-space: nowrap; position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 0 #E5E7EB; }
   td { padding: 13px 16px; border-top: 1px solid #F3F4F6; vertical-align: middle; }
   tr:hover td { background: var(--orange-light); }
-  /* 今後の試合テーブル：日付・時刻列をコンテンツ幅に縮める */
+  /* 今後の試合テーブル：日付・曜日・時刻列をコンテンツ幅に縮める */
   #upcomingTable th:nth-child(1), #upcomingTable td:nth-child(1),
-  #upcomingTable th:nth-child(2), #upcomingTable td:nth-child(2) { width: 1%; white-space: nowrap; }
+  #upcomingTable th:nth-child(2), #upcomingTable td:nth-child(2),
+  #upcomingTable th:nth-child(3), #upcomingTable td:nth-child(3) { width: 1%; white-space: nowrap; }
 
   /* 実績テーブル専用：列グループの区切り線 */
   #pastTable .col-sep, #pastTable th.col-sep { border-left: 2px solid #E5E7EB; }
@@ -359,6 +360,7 @@ document.getElementById('updateModal').addEventListener('click', function(e) {
           <thead>
             <tr>
               <th>日付</th>
+              <th style="width:1%;padding-left:4px;padding-right:8px"></th>
               <th>時刻</th>
               <th>対戦相手</th>
               <th style="white-space:nowrap">球場</th>
@@ -1114,7 +1116,8 @@ function renderUpcoming() {
 
     return `
       <tr ${rowClass}>
-        <td style="white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:5px">${dateBadge}${dowBadge}</div></td>
+        <td style="white-space:nowrap">${dateBadge}</td>
+        <td style="white-space:nowrap;padding-left:4px;padding-right:8px">${dowBadge}</td>
         <td style="font-size:0.85rem">${g.time}</td>
         <td style="white-space:nowrap"><span style="color:${opColor};font-weight:700">${g.opponent}</span></td>
         <td style="white-space:nowrap">${venueCell}</td>
@@ -1136,7 +1139,7 @@ function renderUpcoming() {
     if (upcomingWithTarget > 0) {
       foot.innerHTML = `
         <tr style="background:#F0FDF4;border-top:2px solid #86EFAC">
-          <td colspan="9" style="text-align:right;font-size:0.82rem;color:#166534;padding:10px 16px;font-weight:600">
+          <td colspan="10" style="text-align:right;font-size:0.82rem;color:#166534;padding:10px 16px;font-weight:600">
             🎯 今後の試合 集客目標合計（${upcomingWithTarget}試合分）
           </td>
           <td style="text-align:right;padding:10px 16px;font-weight:700;font-size:1.05rem;color:#166534;white-space:nowrap">
