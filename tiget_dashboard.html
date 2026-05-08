@@ -1110,7 +1110,7 @@ function renderUpcoming() {
 
     return `
       <tr ${rowClass}>
-        <td style="white-space:nowrap">${dateBadge} ${dowBadge}</td>
+        <td style="white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:5px">${dateBadge}${dowBadge}</div></td>
         <td style="font-size:0.85rem">${g.time}</td>
         <td style="white-space:nowrap"><span style="color:${opColor};font-weight:700">${g.opponent}</span></td>
         <td style="white-space:nowrap">${venueCell}</td>
