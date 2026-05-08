@@ -215,12 +215,14 @@
     <div id="kammuriSetModalDate" style="font-size:0.82rem;color:#6B7280;margin-bottom:20px"></div>
     <div style="display:grid;gap:14px">
       <div>
-        <label style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px">企業名<span style="font-weight:400;color:#9CA3AF;font-size:0.75rem;margin-left:6px">既存スポンサーを選ぶか、新規名称を入力</span></label>
-        <input id="kammuriSetName" list="kammuriSponsorList" placeholder="例: コメリ、新規企業名など"
-          oninput="onKammuriNameInput()"
-          style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:0.95rem;outline:none;box-sizing:border-box"
+        <label style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px">企業名</label>
+        <select id="kammuriSetSelect" onchange="onKammuriSelectChange()"
+          style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:0.95rem;outline:none;box-sizing:border-box;background:white;cursor:pointer"
           onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='#E5E7EB'">
-        <datalist id="kammuriSponsorList"></datalist>
+        </select>
+        <input id="kammuriSetNewName" type="text" placeholder="新規企業名を入力"
+          oninput="updateKammuriSetCalc()"
+          style="display:none;width:100%;border:1.5px solid #7C3AED;border-radius:8px;padding:9px 12px;font-size:0.95rem;outline:none;box-sizing:border-box;margin-top:8px">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
@@ -713,30 +715,59 @@ let currentKammuriSetDate = null;
 function openKammuriSetModal(date, opponent) {
   currentKammuriSetDate = date;
   document.getElementById('kammuriSetModalDate').textContent = date + ' vs ' + opponent;
-  // 既存スポンサー一覧を datalist に反映（SPONSOR_DATA の全キー）
-  const dl = document.getElementById('kammuriSponsorList');
-  const allNames = new Set([...Object.keys(SPONSOR_DEFAULTS), ...Object.keys(SPONSOR_DATA)]);
-  dl.innerHTML = [...allNames].map(n => `<option value="${n}">`).join('');
-  // フィールドをリセット
-  document.getElementById('kammuriSetName').value = '';
+  // セレクトボックスに既存スポンサー一覧を構築
+  const sel = document.getElementById('kammuriSetSelect');
+  const allNames = [...new Set([...Object.keys(SPONSOR_DEFAULTS), ...Object.keys(SPONSOR_DATA)])].sort();
+  sel.innerHTML =
+    '<option value="">-- 選択してください --</option>' +
+    allNames.map(n => `<option value="${n}">${n}</option>`).join('') +
+    '<option value="__new__">＋ 新規企業名を入力...</option>';
+  sel.value = '';
+  // 新規入力欄を非表示にリセット
+  document.getElementById('kammuriSetNewName').style.display = 'none';
+  document.getElementById('kammuriSetNewName').value = '';
   document.getElementById('kammuriSetHaiken').value = '';
   document.getElementById('kammuriSetRate').value = '';
   document.getElementById('kammuriSetCalcResult').textContent = '—';
   document.getElementById('kammuriSetCalcResult').style.color = '#5B21B6';
   document.getElementById('kammuriSetError').style.display = 'none';
   document.getElementById('kammuriSetModal').style.display = 'flex';
-  setTimeout(() => document.getElementById('kammuriSetName').focus(), 50);
+  setTimeout(() => sel.focus(), 50);
 }
 
-// 企業名入力時 → 既知スポンサーなら配券数・着券率を自動補完
-function onKammuriNameInput() {
-  const name = document.getElementById('kammuriSetName').value.trim();
-  const sd = SPONSOR_DATA[name] || SPONSOR_DEFAULTS[name];
-  if (sd) {
-    if (sd.haiken != null) document.getElementById('kammuriSetHaiken').value = sd.haiken;
-    if (sd.rate   != null) document.getElementById('kammuriSetRate').value   = sd.rate;
+// セレクト変更時の処理
+function onKammuriSelectChange() {
+  const val = document.getElementById('kammuriSetSelect').value;
+  const newNameInput = document.getElementById('kammuriSetNewName');
+  if (val === '__new__') {
+    // 新規入力モード
+    newNameInput.style.display = 'block';
+    document.getElementById('kammuriSetHaiken').value = '';
+    document.getElementById('kammuriSetRate').value = '';
+    setTimeout(() => newNameInput.focus(), 30);
+  } else {
+    // 既存スポンサー選択 → 配券数・着券率を自動補完
+    newNameInput.style.display = 'none';
+    newNameInput.value = '';
+    if (val) {
+      const sd = SPONSOR_DATA[val] || SPONSOR_DEFAULTS[val];
+      if (sd) {
+        if (sd.haiken != null) document.getElementById('kammuriSetHaiken').value = sd.haiken;
+        if (sd.rate   != null) document.getElementById('kammuriSetRate').value   = sd.rate;
+      } else {
+        document.getElementById('kammuriSetHaiken').value = '';
+        document.getElementById('kammuriSetRate').value = '';
+      }
+    }
   }
   updateKammuriSetCalc();
+}
+
+// 保存時に使う企業名を返す
+function getKammuriSetName() {
+  const val = document.getElementById('kammuriSetSelect').value;
+  if (val === '__new__') return document.getElementById('kammuriSetNewName').value.trim();
+  return val;
 }
 
 function updateKammuriSetCalc() {
@@ -754,12 +785,12 @@ function updateKammuriSetCalc() {
 
 function saveKammuriSetModal() {
   if (!currentKammuriSetDate) return;
-  const name = document.getElementById('kammuriSetName').value.trim();
+  const name = getKammuriSetName();
   const errEl = document.getElementById('kammuriSetError');
   if (!name) {
-    errEl.textContent = '企業名を入力してください';
+    errEl.textContent = document.getElementById('kammuriSetSelect').value === '__new__'
+      ? '新規企業名を入力してください' : '企業名を選択してください';
     errEl.style.display = 'block';
-    document.getElementById('kammuriSetName').style.borderColor = '#EF4444';
     return;
   }
   errEl.style.display = 'none';
