@@ -11,6 +11,7 @@ GitHub Actionsから呼び出してtiget_data.jsonを更新する
 import json
 import re
 import os
+from datetime import date
 import sys
 
 try:
@@ -149,6 +150,7 @@ def main():
     ver_m = re.search(r"v(\d+)$", data.get("version", "2026-v0"))
     old_v = int(ver_m.group(1)) if ver_m else 0
     data["version"] = f"2026-v{old_v + 1}"
+    data["last_updated"] = date.today().isoformat()  # 更新日を今日の日付に
 
     with open(JSON_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
