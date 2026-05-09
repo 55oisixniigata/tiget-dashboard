@@ -2,6 +2,11 @@
 """
 TIGET自動更新スクリプト
 GitHub Actionsから呼び出してtiget_data.jsonを更新する
+
+認証方式: リフレッシュトークン（30日有効）
+  - TIGET_REFRESH_TOKEN シークレットに保存
+  - 期限切れ時は organization.more.tiget.net にログイン後、
+    ブラウザの Cookie "lear-organization-session" から refreshToken を再取得して更新
 """
 import json
 import re
@@ -16,9 +21,8 @@ except ImportError:
     import requests
 
 # ===== 設定 =====
-TIGET_EMAIL    = os.environ["TIGET_EMAIL"]
-TIGET_PASSWORD = os.environ["TIGET_PASSWORD"]
-JSON_PATH      = os.environ.get("JSON_PATH", "tiget_data.json")
+TIGET_REFRESH_TOKEN = os.environ["TIGET_REFRESH_TOKEN"]
+JSON_PATH           = os.environ.get("JSON_PATH", "tiget_data.json")
 
 BASE_URL = "https://api.more.tiget.net"
 GQL_URL  = f"{BASE_URL}/graphql"
@@ -39,46 +43,40 @@ query ($eventId: Int!) {
 }
 """
 
-HEADERS = {
+COMMON_HEADERS = {
     "Content-Type": "application/json",
     "Accept": "application/json, text/plain, */*",
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Origin": "https://organization.more.tiget.net",
     "Referer": "https://organization.more.tiget.net/",
-    "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
-    "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"macOS"',
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-site",
 }
 
 
-def signin():
-    """TIGETにサインインしてアクセストークンを取得"""
-    url = f"{BASE_URL}/auth/organization/signin"
-    resp = requests.post(
-        url,
-        json={"email": TIGET_EMAIL, "password": TIGET_PASSWORD},
-        headers=HEADERS,
+def get_access_token():
+    """リフレッシュトークンを使って新しいアクセストークンを取得"""
+    resp = requests.put(
+        f"{BASE_URL}/auth/organization/refresh",
+        headers={
+            **COMMON_HEADERS,
+            "Authorization": f"Bearer {TIGET_REFRESH_TOKEN}",
+            "refresh-token": TIGET_REFRESH_TOKEN,
+        },
     )
     if not resp.ok:
-        raise RuntimeError(f"サインイン失敗: HTTP {resp.status_code} - {resp.text[:200]}")
+        raise RuntimeError(f"トークン更新失敗: HTTP {resp.status_code} - {resp.text[:200]}")
     access_token = resp.headers.get("access-token")
     if not access_token:
-        raise RuntimeError("サインイン失敗: access-tokenが取得できません")
-    print(f"✅ サインイン成功")
+        raise RuntimeError("トークン更新失敗: access-tokenが取得できません")
+    print("✅ アクセストークン取得成功")
     return access_token
 
 
 def fetch_event_data(event_id, access_token):
     """指定イベントの試合別販売データを取得"""
-    headers = {**HEADERS, "Authorization": f"Bearer {access_token}"}
     resp = requests.post(
         GQL_URL,
         json={"query": GQL_QUERY, "variables": {"eventId": event_id}},
-        headers=headers,
+        headers={**COMMON_HEADERS, "Authorization": f"Bearer {access_token}"},
     )
     resp.raise_for_status()
     stages = resp.json().get("data", {}).get("eventPurchaseListByStage", [])
@@ -96,7 +94,7 @@ def parse_date(stage_start_at):
 def main():
     print("=== TIGET自動更新 開始 ===")
 
-    access_token = signin()
+    access_token = get_access_token()
 
     print("自由席データ取得中...")
     jiyu_stages = fetch_event_data(JIYU_EVENT_ID, access_token)
@@ -162,9 +160,6 @@ def main():
             f.write(f"## ✅ TIGET更新完了\n")
             f.write(f"- 更新試合数: **{updated}試合**\n")
             f.write(f"- バージョン: `{data['version']}`\n")
-            f.write(f"- 自由席: {len(jiyu_data)}試合\n")
-            f.write(f"- 指定席: {len(shitei_data)}試合\n")
-            f.write(f"- 招待合計: {len(shotai_data)}試合\n")
 
 
 if __name__ == "__main__":
