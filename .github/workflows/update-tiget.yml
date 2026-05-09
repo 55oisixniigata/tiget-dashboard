@@ -23,9 +23,8 @@ jobs:
 
       - name: TIGETデータを取得してtiget_data.jsonを更新
         env:
-          TIGET_EMAIL:    ${{ secrets.TIGET_EMAIL }}
-          TIGET_PASSWORD: ${{ secrets.TIGET_PASSWORD }}
-          JSON_PATH:      tiget_data.json
+          TIGET_REFRESH_TOKEN: ${{ secrets.TIGET_REFRESH_TOKEN }}
+          JSON_PATH:           tiget_data.json
         run: python scripts/tiget_auto_update.py
 
       - name: 変更があればコミット＆プッシュ
