@@ -997,9 +997,10 @@ function renderUpcoming() {
     const gameDate = new Date(g.date);
     const daysLeft = Math.max(0, Math.round((gameDate - today) / (1000*60*60*24)));
 
+    const dateShort = g.date.slice(5).replace('-', '/');  // "2026-05-09" → "05/09"
     const dateBadge = isToday
-      ? `<span class="badge badge-today">本日 ${g.date}</span>`
-      : `<span style="font-size:0.88rem">${g.date}</span>`;
+      ? `<span class="badge badge-today">本日 ${dateShort}</span>`
+      : `<span style="font-size:0.88rem">${dateShort}</span>`;
     const dowBadge = `<span class="badge ${g.is_weekend ? 'badge-orange' : 'badge-gray'}">${g.dow}</span>`;
     const opColor = OPPONENT_COLORS[g.opponent] || '#6B7280';
     const venueName = g.venue || 'エコスタ';
@@ -1043,19 +1044,20 @@ function renderUpcoming() {
     let predCell;
     const hasExtra = (g.kammuri && bd.kammuri > 0) || bd.other > 0;
     if (hasExtra) {
-      let breakdown = `ベース <strong>${bd.base.toLocaleString()}</strong>`;
+      let lines = [];
+      lines.push(`<span style="color:var(--gray)">ベース</span> <strong>${bd.base.toLocaleString()}</strong>`);
       if (g.kammuri && bd.kammuri > 0) {
         const sd = SPONSOR_DATA[g.kammuri];
         const hasConfig = sd && sd.haiken != null && sd.rate != null;
-        const kammuriDetail = hasConfig ? `${(sd.haiken/10000).toFixed(1)}万枚×${sd.rate}%` : `見込み`;
-        breakdown += ` ＋ 冠 <strong style="color:#7C3AED">${bd.kammuri.toLocaleString()}</strong><span style="color:#9CA3AF">(${kammuriDetail})</span>`;
+        const kammuriDetail = hasConfig ? `${(sd.haiken/10000).toFixed(1)}万×${sd.rate}%` : `見込み`;
+        lines.push(`<span style="color:var(--gray)">＋冠</span> <strong style="color:#7C3AED">${bd.kammuri.toLocaleString()}</strong> <span style="color:#9CA3AF;font-size:0.63rem">(${kammuriDetail})</span>`);
       }
       if (bd.other > 0) {
-        breakdown += ` ＋ 招待 <strong style="color:#059669">${bd.other.toLocaleString()}</strong>`;
+        lines.push(`<span style="color:var(--gray)">＋招待</span> <strong style="color:#059669">${bd.other.toLocaleString()}</strong>`);
       }
       predCell = `
         <span style="font-size:1.05rem;font-weight:700;color:var(--orange-dark)">${bd.total.toLocaleString()}人</span>
-        <div style="font-size:0.68rem;color:var(--gray);margin-top:2px;line-height:1.7">${breakdown}</div>
+        <div style="font-size:0.68rem;margin-top:2px;line-height:1.8">${lines.join('<br>')}</div>
         ${otherEditBtn}`;
     } else {
       predCell = `
