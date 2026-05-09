@@ -123,10 +123,6 @@
         style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.5);padding:7px 16px;border-radius:20px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s">
         🔄 データを更新
       </button>
-      <button id="updateBtn" onclick="showUpdateModal()"
-        style="background:rgba(255,255,255,0.95);color:#C85D00;border:none;padding:7px 16px;border-radius:20px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s">
-        ✏️ 前売り枚数を手動更新
-      </button>
       <div style="position:relative">
         <button id="tokenBtn" onclick="toggleTokenPanel()"
           style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:7px 12px;border-radius:20px;font-size:0.82rem;cursor:pointer"
@@ -150,28 +146,6 @@
 <div id="pushToast" style="display:none;position:fixed;bottom:20px;right:20px;color:white;padding:10px 18px;border-radius:8px;font-size:0.85rem;z-index:2000;box-shadow:0 4px 12px rgba(0,0,0,0.25);font-weight:500"></div>
 
 <!-- 更新モーダル -->
-<div id="updateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:white;border-radius:16px;padding:28px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
-    <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">🔄 前売り枚数を更新する</div>
-    <div style="font-size:0.85rem;color:#6B7280;margin-bottom:20px;line-height:1.6">
-      Coworkを開いて以下のメッセージを送ると、TIGETから最新データを自動取得してダッシュボードを更新します。
-    </div>
-    <div style="background:#F3F4F6;border-radius:10px;padding:14px;font-size:0.95rem;font-weight:600;color:#1F2937;margin-bottom:16px;text-align:center;letter-spacing:0.02em">
-      「前売り枚数を更新して」
-    </div>
-    <div style="display:flex;gap:10px">
-      <button onclick="copyUpdateCmd()"
-        style="flex:1;background:#F47920;color:white;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
-        📋 コピー
-      </button>
-      <button onclick="closeUpdateModal()"
-        style="flex:1;background:#F3F4F6;color:#374151;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
-        閉じる
-      </button>
-    </div>
-    <div id="copyDone" style="display:none;text-align:center;color:#10B981;font-size:0.82rem;margin-top:10px;font-weight:600">✅ コピーしました！Coworkに貼り付けてください</div>
-  </div>
-</div>
 
 <!-- その他招待モーダル -->
 <div id="otherModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
@@ -315,24 +289,6 @@
     </div>
   </div>
 </div>
-
-<script>
-function showUpdateModal() {
-  document.getElementById('updateModal').style.display = 'flex';
-}
-function closeUpdateModal() {
-  document.getElementById('updateModal').style.display = 'none';
-  document.getElementById('copyDone').style.display = 'none';
-}
-function copyUpdateCmd() {
-  navigator.clipboard.writeText('前売り枚数を更新して').then(() => {
-    document.getElementById('copyDone').style.display = 'block';
-  });
-}
-document.getElementById('updateModal').addEventListener('click', function(e) {
-  if (e.target === this) closeUpdateModal();
-});
-</script>
 
 <div class="summary-row" id="summaryCards"></div>
 
