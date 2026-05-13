@@ -676,7 +676,7 @@ let currentKammuriSetDate = null;
 
 function openKammuriSetModal(date, opponent) {
   currentKammuriSetDate = date;
-  document.getElementById('kammuriSetModalDate').textContent = date + ' vs ' + opponent;
+  document.getElementById('kammuriSetModalDate').textContent = date.slice(5).replace('-','/') + ' vs ' + opponent;
   // セレクトボックスに既存スポンサー一覧を構築
   const sel = document.getElementById('kammuriSetSelect');
   const allNames = [...new Set([...Object.keys(SPONSOR_DEFAULTS), ...Object.keys(SPONSOR_DATA)])].sort();
@@ -684,16 +684,27 @@ function openKammuriSetModal(date, opponent) {
     '<option value="">-- 選択してください --</option>' +
     allNames.map(n => `<option value="${n}">${n}</option>`).join('') +
     '<option value="__new__">＋ 新規企業名を入力...</option>';
-  sel.value = '';
+  // 既に冠が設定されている場合は事前選択
+  const game = GAMES.find(g => g.date === date);
+  const currentKammuri = game ? game.kammuri : null;
+  sel.value = currentKammuri || '';
   // 新規入力欄を非表示にリセット
   document.getElementById('kammuriSetNewName').style.display = 'none';
   document.getElementById('kammuriSetNewName').value = '';
-  document.getElementById('kammuriSetHaiken').value = '';
-  document.getElementById('kammuriSetRate').value = '';
+  // 既存スポンサーの配券数・着券率を自動補完
+  if (currentKammuri) {
+    const sd = SPONSOR_DATA[currentKammuri] || SPONSOR_DEFAULTS[currentKammuri];
+    document.getElementById('kammuriSetHaiken').value = (sd && sd.haiken != null) ? sd.haiken : '';
+    document.getElementById('kammuriSetRate').value   = (sd && sd.rate   != null) ? sd.rate   : '';
+  } else {
+    document.getElementById('kammuriSetHaiken').value = '';
+    document.getElementById('kammuriSetRate').value = '';
+  }
   document.getElementById('kammuriSetCalcResult').textContent = '—';
   document.getElementById('kammuriSetCalcResult').style.color = '#5B21B6';
   document.getElementById('kammuriSetError').style.display = 'none';
   document.getElementById('kammuriSetModal').style.display = 'flex';
+  updateKammuriSetCalc();
   setTimeout(() => sel.focus(), 50);
 }
 
@@ -968,12 +979,17 @@ function renderSummary() {
   
   const completedCount = GAMES.filter(g => g.is_past && !g.is_cancelled).length;
   const cancelledCount = GAMES.filter(g => g.is_cancelled).length;
+  const missingCount = completedCount - pastGames.length;
+  const audienceSub = missingCount > 0
+    ? `${pastGames.length}/${completedCount}試合分 <span style="color:#F59E0B;font-size:0.75em">(${missingCount}試合 集計待ち)</span>`
+    : `${pastGames.length}試合分`;
+  const avgSub = missingCount > 0 ? `${pastGames.length}試合の平均` : '1試合あたり';
 
   const cards = [
     {label:'今季ホーム試合数', value: completedCount + '試合', sub:'中止 ' + cancelledCount + '試合'},
-    {label:'完了試合 累計動員', value: totalAudience.toLocaleString() + '人', sub: pastGames.length + '試合分'},
-    {label:'完了試合 平均動員', value: avgAudience.toLocaleString() + '人', sub:'1試合あたり'},
-    {label:'最多動員試合', value: maxGame ? maxGame.actual_audience.toLocaleString()+'人' : '-', sub: maxGame ? maxGame.date + ' vs ' + maxGame.opponent : ''},
+    {label:'完了試合 累計動員', value: totalAudience.toLocaleString() + '人', sub: audienceSub},
+    {label:'完了試合 平均動員', value: avgAudience.toLocaleString() + '人', sub: avgSub},
+    {label:'最多動員試合', value: maxGame ? maxGame.actual_audience.toLocaleString()+'人' : '-', sub: maxGame ? maxGame.date.slice(5).replace('-','/') + ' vs ' + maxGame.opponent : ''},
   ];
   
   const wrap = document.getElementById('summaryCards');
@@ -1012,7 +1028,7 @@ function renderUpcoming() {
       ? `<span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap" title="${wx.label} / 最高${wx.temp}℃ / 降水${wx.precip}mm"><span style="font-size:1rem">${wx.icon}</span><span style="font-size:0.78rem;color:#374151;font-weight:600">${wx.temp}℃</span></span>`
       : (daysLeft <= 14 ? `<span style="font-size:0.72rem;color:#9CA3AF">取得中</span>` : `<span style="color:#D1D5DB;font-size:0.72rem">—</span>`);
     const kammuriLabel = g.kammuri
-      ? `<span class="badge badge-sponsor" onclick="event.stopPropagation();openKammuriPicker('${g.date}')" style="cursor:pointer" title="クリックして変更・設定">👑${g.kammuri}</span>`
+      ? `<span class="badge badge-sponsor" onclick="event.stopPropagation();openKammuriSetModal('${g.date}','${g.opponent}')" style="cursor:pointer" title="クリックして変更・設定">👑${g.kammuri}</span>`
       : `<button onclick="event.stopPropagation();openKammuriSetModal('${g.date}','${g.opponent}')" style="background:none;border:1px dashed #C4B5FD;border-radius:4px;cursor:pointer;font-size:0.68rem;color:#7C3AED;padding:1px 6px;white-space:nowrap" title="冠試合を設定">＋ 冠</button>`;
     const editBtn = '';
 
