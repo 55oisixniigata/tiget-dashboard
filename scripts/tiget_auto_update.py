@@ -32,6 +32,8 @@ GQL_URL  = f"{BASE_URL}/graphql"
 JIYU_EVENT_ID    = 10234
 SHITEI_EVENT_ID  = 10233
 SHOTAI_EVENT_IDS = [10250, 10276, 10273]
+FARM_DATA_URL = "https://raw.githubusercontent.com/55oisixniigata/npb-farm-tracker/main/data.json"
+
 
 GQL_QUERY = """
 query ($eventId: Int!) {
@@ -92,6 +94,24 @@ def parse_date(stage_start_at):
     return dt.astimezone(JST).strftime("%Y-%m-%d")
 
 
+def fetch_farm_attendance():
+    """NPBファームトラッカーからオイシックスのホーム試合実動員数を取得"""
+    try:
+        resp = requests.get(FARM_DATA_URL, timeout=10)
+        resp.raise_for_status()
+        farm = resp.json()
+        result = {
+            g["date"]: g["audience"]
+            for g in farm.get("games", [])
+            if g.get("home") == "オイシックス" and g.get("audience")
+        }
+        print(f"  ファームトラッカー: {len(result)}試合分取得")
+        return result
+    except Exception as e:
+        print(f"  ⚠️ ファームトラッカー取得失敗（スキップ）: {e}")
+        return {}
+
+
 def main():
     print("=== TIGET自動更新 開始 ===")
 
@@ -122,10 +142,15 @@ def main():
             d = parse_date(s["stageStartAt"])
             shotai_data[d] = shotai_data.get(d, 0) + s["paidEventPurchasesCount"]
 
+    # ファームトラッカーから実動員数取得
+    print("実動員数（ファームトラッカー）取得中...")
+    farm_attendance = fetch_farm_attendance()
+
     with open(JSON_PATH, encoding="utf-8") as f:
         data = json.load(f)
 
     updated = 0
+    farm_updated = 0
     for game in data["games"]:
         d = game["date"]
         changed = False
@@ -139,6 +164,12 @@ def main():
         if d in shotai_data:
             game["shotai_sold"] = shotai_data[d]
             changed = True
+        if d in farm_attendance:
+            new_val = farm_attendance[d]
+            if game.get("actual_audience") != new_val:
+                game["actual_audience"] = new_val
+                farm_updated += 1
+                changed = True
         if changed:
             game["total_presale"] = (
                 game.get("jiyu_sold", 0) +
@@ -162,6 +193,7 @@ def main():
             f.write(f"## ✅ TIGET更新完了\n")
             f.write(f"- 更新試合数: **{updated}試合**\n")
             f.write(f"- バージョン: `{data['version']}`\n")
+            f.write(f"- 実動員数更新: **{farm_updated}試合**\n")
 
 
 if __name__ == "__main__":
