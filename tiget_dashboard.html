@@ -865,6 +865,27 @@ function startTargetEdit(date, currentVal) {
   }, 20);
 }
 
+function getRecommendedTarget(date, venue, time) {
+  const d = new Date(date);
+  const dow = d.getDay();
+  const isWeekend = dow === 0 || dow === 6;
+  const hour = time ? parseInt(time.split(':')[0]) : 13;
+  const isEcosta = venue && venue.includes('エコスタ');
+  if (isWeekend) return isEcosta ? 4000 : 2000;
+  const isNight = hour >= 17;
+  return isEcosta ? (isNight ? 2000 : 1000) : 1000;
+}
+
+function applyRecommended(date, val) {
+  event.stopPropagation();
+  GAME_TARGETS[date] = val;
+  localStorage.setItem('tiget_game_targets', JSON.stringify(GAME_TARGETS));
+  renderUpcoming();
+  renderPast();
+  renderSummary();
+  if (getDashToken()) pushDashToGitHub('集客目標を更新: ' + date);
+}
+
 function saveTargetFromInput(date) {
   const inp = document.getElementById('targetInput_' + date);
   if (!inp || inp._saved) return;
@@ -1086,7 +1107,17 @@ function renderUpcoming() {
     const tgt = GAME_TARGETS[g.date];
     const targetCellContent = tgt != null
       ? `<span style="font-weight:700;color:#059669">${tgt.toLocaleString()}人</span><span style="font-size:0.65rem;color:#9CA3AF;margin-left:2px">✏️</span>`
-      : `<button onclick="event.stopPropagation();startTargetEdit('${g.date}',null)" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 8px;white-space:nowrap">＋ 目標設定</button>`;
+      : (() => {
+          const rec = getRecommendedTarget(g.date, g.venue, g.time);
+          const recLabel = (g.venue && g.venue.includes('エコスタ') && (() => { const d = new Date(g.date); return d.getDay()===0||d.getDay()===6; })()) ? `${rec.toLocaleString()}人〜` : `${rec.toLocaleString()}人`;
+          return `<div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
+            <button onclick="event.stopPropagation();startTargetEdit('${g.date}',null)" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 6px;white-space:nowrap">＋ 目標設定</button>
+            <span style="display:inline-flex;align-items:center;gap:3px;background:#FEF3C7;border-radius:4px;padding:2px 5px;white-space:nowrap">
+              <span style="font-size:0.65rem;color:#92400E">推奨 ${recLabel}</span>
+              <button onclick="applyRecommended('${g.date}',${rec})" style="background:#F47920;border:none;border-radius:3px;cursor:pointer;font-size:0.65rem;color:white;padding:1px 5px;white-space:nowrap">入力</button>
+            </span>
+          </div>`;
+        })();
     const targetCell = `<div id="targetCell_${g.date}" onclick="startTargetEdit('${g.date}',${tgt != null ? tgt : 'null'})" style="cursor:pointer;text-align:right;min-width:80px">${targetCellContent}</div>`;
 
     return `
