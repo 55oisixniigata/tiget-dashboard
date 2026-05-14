@@ -1114,7 +1114,7 @@ function renderUpcoming() {
       : (() => {
           const rec = getRecommendedTarget(g.date, g.venue, g.time, g.kammuri);
           const recLabel = (g.venue && g.venue.includes('エコスタ') && (() => { const d = new Date(g.date); return d.getDay()===0||d.getDay()===6; })()) ? `${rec.toLocaleString()}人〜` : `${rec.toLocaleString()}人`;
-          return `<div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
+          return `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
             <button onclick="event.stopPropagation();startTargetEdit('${g.date}',null)" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 6px;white-space:nowrap">＋ 目標設定</button>
             <span style="display:inline-flex;align-items:center;gap:3px;background:#FEF3C7;border-radius:4px;padding:2px 5px;white-space:nowrap">
               <span style="font-size:0.65rem;color:#92400E">推奨 ${recLabel}</span>
