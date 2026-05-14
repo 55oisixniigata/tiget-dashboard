@@ -865,13 +865,17 @@ function startTargetEdit(date, currentVal) {
   }, 20);
 }
 
-function getRecommendedTarget(date, venue, time) {
+function getRecommendedTarget(date, venue, time, kammuri) {
   const d = new Date(date);
   const dow = d.getDay();
   const isWeekend = dow === 0 || dow === 6;
   const hour = time ? parseInt(time.split(':')[0]) : 13;
   const isEcosta = venue && venue.includes('エコスタ');
-  if (isWeekend) return isEcosta ? 4000 : 2000;
+  const hasKammuri = !!kammuri;
+  if (isWeekend) {
+    if (isEcosta) return hasKammuri ? 5000 : 4000;
+    return 2000;
+  }
   const isNight = hour >= 17;
   return isEcosta ? (isNight ? 2000 : 1000) : 1000;
 }
@@ -1108,7 +1112,7 @@ function renderUpcoming() {
     const targetCellContent = tgt != null
       ? `<span style="font-weight:700;color:#059669">${tgt.toLocaleString()}人</span><span style="font-size:0.65rem;color:#9CA3AF;margin-left:2px">✏️</span>`
       : (() => {
-          const rec = getRecommendedTarget(g.date, g.venue, g.time);
+          const rec = getRecommendedTarget(g.date, g.venue, g.time, g.kammuri);
           const recLabel = (g.venue && g.venue.includes('エコスタ') && (() => { const d = new Date(g.date); return d.getDay()===0||d.getDay()===6; })()) ? `${rec.toLocaleString()}人〜` : `${rec.toLocaleString()}人`;
           return `<div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
             <button onclick="event.stopPropagation();startTargetEdit('${g.date}',null)" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 6px;white-space:nowrap">＋ 目標設定</button>
