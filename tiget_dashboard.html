@@ -987,8 +987,8 @@ function renderSummary() {
 
   const cards = [
     {label:'今季ホーム試合数', value: completedCount + '試合', sub:'中止 ' + cancelledCount + '試合'},
-    {label:'完了試合 累計動員', value: totalAudience.toLocaleString() + '人', sub: audienceSub},
-    {label:'完了試合 平均動員', value: avgAudience.toLocaleString() + '人', sub: avgSub},
+    {label:'累計動員', value: totalAudience.toLocaleString() + '人', sub: audienceSub},
+    {label:'平均動員', value: avgAudience.toLocaleString() + '人', sub: avgSub},
     {label:'最多動員試合', value: maxGame ? maxGame.actual_audience.toLocaleString()+'人' : '-', sub: maxGame ? maxGame.date.slice(5).replace('-','/') + ' vs ' + maxGame.opponent : ''},
   ];
   
