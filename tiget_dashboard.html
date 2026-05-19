@@ -149,43 +149,32 @@
 
 <!-- その他招待モーダル -->
 <div id="otherModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:white;border-radius:16px;padding:28px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+  <div style="background:white;border-radius:16px;padding:28px;max-width:480px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:85vh;display:flex;flex-direction:column">
     <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px">🎟️ その他招待の設定</div>
     <div id="otherModalDate" style="font-size:0.82rem;color:#6B7280;margin-bottom:4px"></div>
-    <div style="font-size:0.8rem;color:#6B7280;margin-bottom:20px;line-height:1.6">団体招待・企画招待など、冠試合以外の招待来場見込み数を入力してください。</div>
-    <div style="display:grid;gap:14px">
-      <div>
-        <label style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px">招待来場見込み人数</label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input id="otherInput" type="number" placeholder="例: 200" min="0" step="10"
-            style="flex:1;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:1.1rem;outline:none"
-            onfocus="this.style.borderColor='#F47920'" onblur="this.style.borderColor='#E5E7EB'">
-          <span style="font-size:0.88rem;color:#6B7280">人</span>
-        </div>
-      </div>
-      <div>
-        <label style="font-size:0.82rem;font-weight:600;color:#374151;display:block;margin-bottom:6px">備考（招待内容・招待先など）</label>
-        <input id="otherMemo" type="text" placeholder="例: ○○団体 招待券100枚配布"
-          style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:0.9rem;outline:none;box-sizing:border-box"
-          onfocus="this.style.borderColor='#F47920'" onblur="this.style.borderColor='#E5E7EB'">
-      </div>
+    <div style="font-size:0.8rem;color:#6B7280;margin-bottom:14px;line-height:1.6">団体招待・企画招待など、冠試合以外の招待来場見込み数を入力してください。</div>
+    <div style="display:grid;grid-template-columns:80px 1fr;gap:4px 8px;margin-bottom:6px;padding:0 36px 0 0">
+      <div style="font-size:0.75rem;color:#9CA3AF;font-weight:600;text-align:center">人数</div>
+      <div style="font-size:0.75rem;color:#9CA3AF;font-weight:600">団体名・備考</div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:20px">
+    <div id="otherRowsContainer" style="overflow-y:auto;display:grid;gap:8px;flex:1"></div>
+    <button onclick="addOtherRow()"
+      style="margin-top:10px;width:100%;background:#F9FAFB;border:1.5px dashed #D1D5DB;border-radius:8px;padding:8px;font-size:0.85rem;color:#6B7280;cursor:pointer"
+      onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#F9FAFB'">
+      ＋ 団体を追加
+    </button>
+    <div style="display:flex;gap:10px;margin-top:14px">
       <button onclick="saveOtherModal()"
-        style="flex:1;background:#F47920;color:white;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
-        💾 保存
-      </button>
+        style="flex:1;background:#F47920;color:white;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">💾 保存</button>
       <button onclick="clearOtherModal()"
-        style="flex:1;background:#FEF0E4;color:#C85D00;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">
-        🗑️ クリア
-      </button>
+        style="flex:1;background:#FEF0E4;color:#C85D00;border:none;padding:10px;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">🗑️ 全クリア</button>
       <button onclick="closeOtherModal()"
-        style="background:#F3F4F6;color:#374151;border:none;padding:10px 14px;border-radius:8px;font-size:0.88rem;cursor:pointer">
-        ✕
-      </button>
+        style="background:#F3F4F6;color:#374151;border:none;padding:10px 14px;border-radius:8px;font-size:0.88rem;cursor:pointer">✕</button>
     </div>
   </div>
 </div>
+
+
 
 <!-- 冠試合 新規設定モーダル（＋冠ボタンから開く） -->
 <div id="kammuriSetModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">
@@ -921,13 +910,15 @@ function saveTargetFromInput(date) {
 function getOtherVisitors(date) {
   const d = OTHER_VISITORS[date];
   if (!d) return 0;
-  return typeof d === 'object' ? (d.count || 0) : d; // 旧形式(数値)との互換
+  if (Array.isArray(d)) return d.reduce((sum, e) => sum + (e.count || 0), 0);
+  return typeof d === 'object' ? (d.count || 0) : d; // 旧形式互換
 }
 
 function getOtherMemo(date) {
   const d = OTHER_VISITORS[date];
-  if (!d || typeof d !== 'object') return '';
-  return d.memo || '';
+  if (!d) return '';
+  if (Array.isArray(d)) return d.filter(e => e.memo).map(e => e.memo).join('、');
+  return typeof d === 'object' ? (d.memo || '') : '';
 }
 
 // 冠来場見込みを返す（配券数・着券率が設定済みなら計算値、未設定ならGAMESのfallback値）
@@ -1432,15 +1423,49 @@ function renderModelCharts() {
 
 // ===== その他招待モーダル =====
 let currentOtherDate = null;
+let _otherRowIdx = 0;
+
+function addOtherRow(count, memo) {
+  const container = document.getElementById('otherRowsContainer');
+  const idx = _otherRowIdx++;
+  const row = document.createElement('div');
+  row.id = 'otherRow_' + idx;
+  row.style.cssText = 'display:grid;grid-template-columns:80px 1fr auto;gap:6px;align-items:center';
+  const countVal = (count != null && count !== '') ? count : '';
+  const memoVal  = (memo  != null) ? memo.replace(/"/g, '&quot;') : '';
+  row.innerHTML =
+    '<div style="display:flex;align-items:center;gap:4px">' +
+      '<input type="number" placeholder="例:200" min="0" step="10" value="' + countVal + '"' +
+        ' style="width:100%;border:1.5px solid #E5E7EB;border-radius:6px;padding:6px 8px;font-size:0.95rem;outline:none;box-sizing:border-box"' +
+        ' onfocus="this.style.borderColor=\'#F47920\'" onblur="this.style.borderColor=\'#E5E7EB\'">' +
+      '<span style="font-size:0.78rem;color:#9CA3AF;white-space:nowrap">人</span>' +
+    '</div>' +
+    '<input type="text" placeholder="○○団体、△△企業 など" value="' + memoVal + '"' +
+      ' style="width:100%;border:1.5px solid #E5E7EB;border-radius:6px;padding:6px 8px;font-size:0.85rem;outline:none;box-sizing:border-box"' +
+      ' onfocus="this.style.borderColor=\'#F47920\'" onblur="this.style.borderColor=\'#E5E7EB\'">' +
+    '<button onclick="removeOtherRow(\'otherRow_' + idx + '\')"' +
+      ' style="background:#FEF2F2;color:#EF4444;border:none;border-radius:6px;padding:6px 9px;cursor:pointer;font-size:0.85rem;flex-shrink:0">✕</button>';
+  container.appendChild(row);
+  row.querySelector('input[type="number"]').focus();
+}
+
+function removeOtherRow(rowId) {
+  const el = document.getElementById(rowId);
+  if (el) el.remove();
+}
 
 function openOtherModal(date, opponent) {
   currentOtherDate = date;
-  document.getElementById('otherModalDate').textContent = `${date} vs ${opponent}`;
-  const saved = OTHER_VISITORS[date] || {};
-  document.getElementById('otherInput').value = saved.count ?? '';
-  document.getElementById('otherMemo').value  = saved.memo  ?? '';
+  _otherRowIdx = 0;
+  document.getElementById('otherModalDate').textContent = date + ' vs ' + opponent;
+  document.getElementById('otherRowsContainer').innerHTML = '';
+  const saved = OTHER_VISITORS[date];
+  if (saved) {
+    const arr = Array.isArray(saved) ? saved : [saved]; // 旧形式互換
+    arr.forEach(function(e) { addOtherRow(e.count, e.memo); });
+  }
+  if (!document.getElementById('otherRowsContainer').children.length) addOtherRow();
   document.getElementById('otherModal').style.display = 'flex';
-  setTimeout(() => document.getElementById('otherInput').focus(), 50);
 }
 
 function closeOtherModal() {
@@ -1451,30 +1476,33 @@ function closeOtherModal() {
 function saveOtherModal() {
   if (!currentOtherDate) return;
   const date = currentOtherDate;
-  const v    = parseInt(document.getElementById('otherInput').value);
-  const memo = document.getElementById('otherMemo').value.trim();
-  if (!isNaN(v) && v > 0) {
-    OTHER_VISITORS[date] = { count: v, memo };
+  const rows = document.querySelectorAll('#otherRowsContainer > div');
+  const entries = [];
+  rows.forEach(function(row) {
+    const inputs = row.querySelectorAll('input');
+    const count = parseInt(inputs[0].value);
+    const memo  = inputs[1].value.trim();
+    if (!isNaN(count) && count > 0) entries.push({ count: count, memo: memo });
+  });
+  if (entries.length > 0) {
+    OTHER_VISITORS[date] = entries;
   } else {
     delete OTHER_VISITORS[date];
   }
   saveOtherVisitors();
   closeOtherModal();
   renderUpcoming();
-  if (getDashToken()) pushDashToGitHub(`招待設定を更新: ${date}`);
+  if (getDashToken()) pushDashToGitHub('招待設定を更新: ' + date);
 }
 
 function clearOtherModal() {
-  document.getElementById('otherInput').value = '';
-  document.getElementById('otherMemo').value  = '';
-  if (currentOtherDate) {
-    const date = currentOtherDate;
-    delete OTHER_VISITORS[date];
-    saveOtherVisitors();
-    closeOtherModal();
-    renderUpcoming();
-    if (getDashToken()) pushDashToGitHub(`招待設定をクリア: ${date}`);
-  }
+  if (!currentOtherDate) return;
+  const date = currentOtherDate;
+  delete OTHER_VISITORS[date];
+  saveOtherVisitors();
+  closeOtherModal();
+  renderUpcoming();
+  if (getDashToken()) pushDashToGitHub('招待設定をクリア: ' + date);
 }
 
 document.getElementById('otherModal').addEventListener('click', function(e) {
