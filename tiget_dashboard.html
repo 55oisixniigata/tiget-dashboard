@@ -876,10 +876,10 @@ function getRecommendedTarget(date, venue, time, kammuri) {
   const hasKammuri = !!kammuri;
   if (isWeekend) {
     if (isEcosta) return hasKammuri ? 5000 : 4000;
-    return 2000;
+    return 3000;
   }
   const isNight = hour >= 17;
-  return isEcosta ? (isNight ? 2000 : 1000) : 1000;
+  return isEcosta ? (isNight ? 3000 : 2000) : 1500;
 }
 
 function applyRecommended(date, val) {
@@ -1113,14 +1113,19 @@ function renderUpcoming() {
 
     // 集客目標セル
     const tgt = GAME_TARGETS[g.date];
+    const _rec = getRecommendedTarget(g.date, g.venue, g.time, g.kammuri);
+    const _isEcostaWE = (g.venue && g.venue.includes('エコスタ')) && (() => { const dw = new Date(g.date).getDay(); return dw===0||dw===6; })();
+    const _recLabel = _isEcostaWE ? `${_rec.toLocaleString()}人〜` : `${_rec.toLocaleString()}人`;
+    const _recBadge = `<div style="font-size:0.63rem;color:#D97706;white-space:nowrap;margin-top:2px">推奨 ${_recLabel}</div>`;
     const targetCellContent = tgt != null
-      ? `<span style="font-weight:700;color:#059669">${tgt.toLocaleString()}人</span><span style="font-size:0.65rem;color:#9CA3AF;margin-left:2px">✏️</span>`
-      : (() => {
-          const rec = getRecommendedTarget(g.date, g.venue, g.time, g.kammuri);
-          const isEcostaWE = (g.venue && g.venue.includes('エコスタ')) && (() => { const dw = new Date(g.date).getDay(); return dw===0||dw===6; })();
-          const recLabel = isEcostaWE ? `${rec.toLocaleString()}人〜` : `${rec.toLocaleString()}人`;
-          return `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><button onclick="event.stopPropagation();startTargetEdit('${g.date}',null,'${g.venue||""}','${g.time||""}','${g.kammuri||""}')" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 8px;white-space:nowrap">＋ 目標設定</button><span style="font-size:0.65rem;color:#D97706;white-space:nowrap">推奨 ${recLabel}</span></div>`;
-        })()
+      ? `<div style="display:flex;flex-direction:column;align-items:flex-end">
+           <div><span style="font-weight:700;color:#059669">${tgt.toLocaleString()}人</span><span style="font-size:0.65rem;color:#9CA3AF;margin-left:2px">✏️</span></div>
+           ${_recBadge}
+         </div>`
+      : `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+           <button onclick="event.stopPropagation();startTargetEdit('${g.date}',null,'${g.venue||\'\'}','${g.time||\'\'}','${g.kammuri|\'\'}')" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 8px;white-space:nowrap">＋ 目標設定</button>
+           ${_recBadge}
+         </div>`
     const targetCell = `<div id="targetCell_${g.date}" onclick="startTargetEdit('${g.date}',${tgt!=null?tgt:'null'},'${g.venue||""}','${g.time||""}','${g.kammuri||""}')" style="cursor:pointer;text-align:right;min-width:80px">${targetCellContent}</div>`;
 
     return `
