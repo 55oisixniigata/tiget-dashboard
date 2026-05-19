@@ -1123,7 +1123,7 @@ function renderUpcoming() {
            ${_recBadge}
          </div>`
       : `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-           <button onclick="event.stopPropagation();startTargetEdit('${g.date}',null,'${g.venue||\'\'}','${g.time||\'\'}','${g.kammuri|\'\'}')" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 8px;white-space:nowrap">＋ 目標設定</button>
+           <button onclick="event.stopPropagation();startTargetEdit('${g.date}',null,'${g.venue||''}','${g.time||''}','${g.kammuri||''}')" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.72rem;color:#9CA3AF;padding:2px 8px;white-space:nowrap">＋ 目標設定</button>
            ${_recBadge}
          </div>`
     const targetCell = `<div id="targetCell_${g.date}" onclick="startTargetEdit('${g.date}',${tgt!=null?tgt:'null'},'${g.venue||""}','${g.time||""}','${g.kammuri||""}')" style="cursor:pointer;text-align:right;min-width:80px">${targetCellContent}</div>`;
