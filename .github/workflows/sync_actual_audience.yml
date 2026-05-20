@@ -1,0 +1,84 @@
+name: Sync Actual Audience from NPB Farm Tracker
+
+on:
+  schedule:
+    # 15:00 UTC = JST 00:00 (npb-farm-tracker 23:00 JST update after)
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync actual_audience and is_cancelled
+        run: |
+          python3 - << 'PYEOF'
+          import json, urllib.request
+          from datetime import date
+
+          FARM_URL = "https://raw.githubusercontent.com/55oisixniigata/npb-farm-tracker/main/data.json"
+          TIGET_PATH = "tiget_data.json"
+          CANCELLED_THRESHOLD_DAYS = 2
+
+          with urllib.request.urlopen(FARM_URL, timeout=15) as r:
+              farm_data = json.loads(r.read().decode())
+
+          oisix_home = {}
+          for g in farm_data.get("games", []):
+              if g.get("home") == "オイシックス":
+                  oisix_home[g["date"]] = g["audience"]
+
+          with open(TIGET_PATH, encoding="utf-8") as f:
+              tiget = json.load(f)
+
+          today = date.today()
+          updated_audience = []
+          updated_cancelled = []
+
+          for game in tiget.get("games", []):
+              gdate = game.get("date", "")
+              if not gdate:
+                  continue
+              game_date = date.fromisoformat(gdate)
+              if game_date >= today:
+                  continue
+              if game.get("actual_audience") is not None:
+                  continue
+              if game.get("is_cancelled"):
+                  continue
+              if gdate in oisix_home:
+                  game["actual_audience"] = oisix_home[gdate]
+                  updated_audience.append(gdate + " vs " + game.get("opponent", ""))
+              elif (today - game_date).days >= CANCELLED_THRESHOLD_DAYS:
+                  game["is_cancelled"] = True
+                  updated_cancelled.append(gdate + " vs " + game.get("opponent", ""))
+
+          if not updated_audience and not updated_cancelled:
+              print("no changes")
+          else:
+              with open(TIGET_PATH, "w", encoding="utf-8") as f:
+                  json.dump(tiget, f, ensure_ascii=False, separators=(",", ":"))
+              if updated_audience:
+                  print("updated audience: " + str(updated_audience))
+              if updated_cancelled:
+                  print("cancelled: " + str(updated_cancelled))
+          PYEOF
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tiget_data.json
+          if git diff --cached --quiet; then
+            echo "no changes, skip"
+          else
+            git commit -m "auto: sync actual audience $(date +'%Y-%m-%d')"
+            git push
+          fi
