@@ -1293,13 +1293,13 @@ function renderPast() {
   if (pfoot) {
     if (pastTargetGames.length > 0) {
       const rateColor = achieveRate === null ? '#6B7280' : achieveRate >= 100 ? '#059669' : achieveRate >= 80 ? '#D97706' : '#DC2626';
-      const rateStr = achieveRate !== null ? ` <span style="color:${rateColor};font-weight:700">（達成率 ${achieveRate}%）</span>` : '';
+      const rateStr = achieveRate !== null ? `<div style="font-size:0.75rem;font-weight:700;color:${rateColor};margin-top:2px">達成率 ${achieveRate}%</div>` : '';
       pfoot.innerHTML = `
         <tr style="background:#F0FDF4;border-top:2px solid #86EFAC">
           <td colspan="9" style="text-align:right;font-size:0.82rem;color:#166534;padding:10px 16px;font-weight:600">
             🎯 完了試合 集客目標合計（${pastTargetGames.length}試合分）
           </td>
-          <td style="text-align:right;padding:10px 16px;font-weight:700;font-size:1.0rem;color:#166534;white-space:nowrap">
+          <td style="text-align:right;padding:10px 16px;font-weight:700;font-size:1.0rem;color:#166534">
             ${pastTargetSum.toLocaleString()}人${rateStr}
           </td>
           <td colspan="2"></td>
