@@ -977,7 +977,9 @@ function calcBreakdown(g) {
   const base = Math.max(raw, projectedPresale, floor);
   const kammuri = getKammuriVisitors(g.kammuri, g.kammuri_visitors);
   const other = getOtherVisitors(g.date);
-  return { currentPresale, projectedPresale, base, kammuri, other, total: base + kammuri + other };
+  const tigetShotai = (g.shotai_sold || 0) + (g.shotai_coupon || 0);
+  const adjustedOther = Math.max(0, other - tigetShotai);
+  return { currentPresale, projectedPresale, base, kammuri, other, tigetShotai, adjustedOther, total: base + kammuri + adjustedOther };
 }
 
 // 予測値を動的に計算（後方互換）
@@ -1144,7 +1146,11 @@ function renderUpcoming() {
         lines.push(`<span style="color:var(--gray)">＋冠</span> <strong style="color:#7C3AED">${bd.kammuri.toLocaleString()}</strong> <span style="color:#9CA3AF;font-size:0.63rem">(${kammuriDetail})</span>`);
       }
       if (bd.other > 0) {
-        lines.push(`<span style="color:var(--gray)">＋招待</span> <strong style="color:#059669">${bd.other.toLocaleString()}</strong>`);
+        if (bd.tigetShotai > 0) {
+          lines.push(`<span style="color:var(--gray)">＋招待</span> <strong style="color:#059669">${bd.adjustedOther.toLocaleString()}</strong> <span style="color:#9CA3AF;font-size:0.63rem">(見込${bd.other}-申込${bd.tigetShotai})</span>`);
+        } else {
+          lines.push(`<span style="color:var(--gray)">＋招待</span> <strong style="color:#059669">${bd.other.toLocaleString()}</strong>`);
+        }
       }
       predCell = `
         <span style="font-size:1.05rem;font-weight:700;color:var(--orange-dark)">${bd.total.toLocaleString()}人</span>
