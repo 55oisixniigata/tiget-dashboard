@@ -875,11 +875,11 @@ function getRecommendedTarget(date, venue, time, kammuri) {
   const isEcosta = venue && venue.includes('エコスタ');
   const hasKammuri = !!kammuri;
   if (isWeekend) {
-    if (isEcosta) return hasKammuri ? 5000 : 4000;
-    return 3000;
+    if (isEcosta) return hasKammuri ? 6000 : 5000;
+    return 4000;
   }
   const isNight = hour >= 17;
-  return isEcosta ? (isNight ? 3000 : 2000) : 1500;
+  return isEcosta ? (isNight ? 4500 : 3000) : 1500;
 }
 
 function applyRecommended(date, val) {
