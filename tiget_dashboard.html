@@ -358,8 +358,8 @@
               <th class="col-sep">前売り合計</th>
               <th>前売り率</th>
               <th>有償率</th>
-              <th class="col-sep">予測動員</th>
-              <th>実績動員</th>
+              <th class="col-sep" style="text-align:right;white-space:nowrap">予測動員</th>
+              <th style="text-align:right;white-space:nowrap">実績</th>
               <th style="text-align:right;white-space:nowrap">🎯 目標</th>
               <th>誤差</th>
               <th>倍率</th>
@@ -1221,10 +1221,10 @@ function renderPast() {
         <td style="text-align:right;font-weight:700;${paidColor}">
           ${paidPct !== null ? paidPct.toFixed(1) + '%' : '-'}
         </td>
-        <td class="col-sep" style="text-align:right;color:#9CA3AF;font-size:0.83rem">
+        <td class="col-sep" style="text-align:right;color:#9CA3AF;font-size:0.83rem;white-space:nowrap">
           ${calcPrediction(g)?.toLocaleString() ?? '-'}人
         </td>
-        <td style="text-align:right;font-weight:700;font-size:1.02rem">
+        <td style="text-align:right;font-weight:700;white-space:nowrap">
           ${hasActual ? g.actual_audience.toLocaleString()+'人' : '<span class="badge badge-gray">未掲載</span>'}
         </td>
         <td style="text-align:right">
