@@ -1038,6 +1038,42 @@ function renderSummary() {
       <div class="card-sub">${c.sub}</div>
     </div>
   `).join('');
+
+  // ===== シーズン見込みバー =====
+  const upcomingGames = GAMES.filter(g => !g.is_past && !g.is_cancelled);
+  const targetSetGames = upcomingGames.filter(g => GAME_TARGETS[g.date] != null);
+  const targetSum = targetSetGames.reduce((s,g) => s + GAME_TARGETS[g.date], 0);
+  const projection = totalAudience + targetSum;
+  const seasonGoal = 200000;
+  const pctActual = Math.min(100, totalAudience / seasonGoal * 100);
+  const pctTarget = Math.min(100 - pctActual, targetSum / seasonGoal * 100);
+  const remaining = seasonGoal - projection;
+  const remainingGamesCount = upcomingGames.length - targetSetGames.length;
+  const proj = document.getElementById('seasonProjection');
+  if (proj) proj.innerHTML = `
+    <div style="background:white;border-radius:12px;padding:16px 20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:1px solid #E5E7EB">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+        <div style="font-size:0.85rem;font-weight:700;color:#374151">🎯 シーズン見込み合計
+          <span style="font-size:0.75rem;font-weight:400;color:#9CA3AF;margin-left:6px">実績 ＋ 当初目標（設定済み${targetSetGames.length}試合）</span>
+        </div>
+        <div style="font-size:1.1rem;font-weight:800;color:${projection >= seasonGoal ? '#059669' : '#F47920'}">
+          ${projection.toLocaleString()}人
+          <span style="font-size:0.75rem;font-weight:500;color:#6B7280;margin-left:4px">
+            ${remaining > 0 ? '／ 200,000人まであと ' + remaining.toLocaleString() + '人' : '🎉 20万人達成！'}
+            ${remainingGamesCount > 0 ? '（' + remainingGamesCount + '試合 目標未設定）' : ''}
+          </span>
+        </div>
+      </div>
+      <div style="height:14px;background:#F3F4F6;border-radius:7px;overflow:hidden;display:flex">
+        <div style="width:${pctActual.toFixed(1)}%;background:#F47920;border-radius:7px 0 0 7px;transition:width 0.4s" title="実績 ${totalAudience.toLocaleString()}人"></div>
+        <div style="width:${pctTarget.toFixed(1)}%;background:#FCD34D;transition:width 0.4s" title="目標設定済み ${targetSum.toLocaleString()}人"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:6px;font-size:0.72rem;color:#6B7280">
+        <span><span style="display:inline-block;width:10px;height:10px;background:#F47920;border-radius:2px;margin-right:3px"></span>実績 ${totalAudience.toLocaleString()}人</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#FCD34D;border-radius:2px;margin-right:3px"></span>当初目標（設定済み） ${targetSum.toLocaleString()}人</span>
+        <span style="color:#D1D5DB">目標 ${seasonGoal.toLocaleString()}人</span>
+      </div>
+    </div>`;
 }
 
 // ===== 今後の試合テーブル =====
