@@ -1127,9 +1127,9 @@ function renderUpcoming() {
     // ③ 来場者予測セル（冠・その他招待は内訳付き）
     const otherMemo = getOtherMemo(g.date);
     const otherBtnLabel = bd.other > 0
-      ? `🎟️ ${bd.other.toLocaleString()}人${otherMemo ? ` (${otherMemo})` : ''}`
+      ? `🎟️ ${otherMemo || '招待あり'}`
       : '＋ その他招待';
-    const otherEditBtn = `<button onclick="openOtherModal('${g.date}','${g.opponent}')" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.68rem;color:${bd.other > 0 ? '#059669' : 'var(--gray)'};padding:1px 5px;margin-top:3px;display:inline-block;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${otherMemo || 'その他招待を設定'}">${otherBtnLabel}</button>`;
+    const otherEditBtn = `<button onclick="openOtherModal('${g.date}','${g.opponent}')" style="background:none;border:1px dashed #D1D5DB;border-radius:4px;cursor:pointer;font-size:0.68rem;color:${bd.other > 0 ? '#059669' : 'var(--gray)'};padding:1px 5px;margin-top:3px;display:inline-block;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${otherMemo || 'その他招待を設定'}">${otherBtnLabel}</button>`;
 
     let predCell;
     const hasExtra = (g.kammuri && bd.kammuri > 0) || bd.other > 0;
