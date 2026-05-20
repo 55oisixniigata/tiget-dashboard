@@ -323,7 +323,7 @@
               <th style="text-align:center;white-space:nowrap">球場</th>
               <th style="text-align:center;white-space:nowrap">冠試合</th>
               <th style="text-align:center;white-space:nowrap">天気</th>
-              <th style="text-align:right;padding-left:6px">📋 前売実績<br><span style="font-weight:400;font-size:0.7rem;text-transform:none">TIGET（自由+指定）</span></th>
+              <th style="text-align:right;padding-left:6px">📋 前売実績<br><span style="font-weight:400;font-size:0.7rem;text-transform:none">TIGET（自由+指定+招待）</span></th>
               <th style="text-align:right">📈 前売着地予測</th>
               <th style="text-align:right">🏟️ 来場者予測</th>
               <th style="text-align:right;white-space:nowrap">🎯 集客目標</th>
@@ -1111,9 +1111,10 @@ function renderUpcoming() {
     const bd = calcBreakdown(g);
 
     // ① 前売実績セル
+    const shotaiCount = (g.shotai_sold || 0) + (g.shotai_coupon || 0);
     const currentCell = `
       <span style="font-weight:700">${bd.currentPresale.toLocaleString()}枚</span>
-      <div style="font-size:0.68rem;color:var(--gray);margin-top:1px">自${g.jiyu_sold} + 指${g.shitei_sold}</div>`;
+      <div style="font-size:0.68rem;color:var(--gray);margin-top:1px">自${g.jiyu_sold} + 指${g.shitei_sold}${shotaiCount > 0 ? ` + <span style="color:#059669">招${shotaiCount}</span>` : ''}</div>`;
 
     // ② 前売着地予測セル
     const daysTag = daysLeft <= 3
