@@ -57,6 +57,8 @@
   /* 今後の試合テーブル：日付・時刻列をコンテンツ幅に縮める */
   #upcomingTable th:nth-child(1), #upcomingTable td:nth-child(1),
   #upcomingTable th:nth-child(2), #upcomingTable td:nth-child(2) { width: 1%; white-space: nowrap; }
+  /* 来場者予測列が残り幅を吸収 */
+  #upcomingTable th:nth-child(9), #upcomingTable td:nth-child(9) { width: 100%; }
 
   /* 実績テーブル専用：列グループの区切り線 */
   #pastTable .col-sep, #pastTable th.col-sep { border-left: 2px solid #E5E7EB; }
@@ -321,8 +323,7 @@
         <div class="table-title">今後のホーム試合 前売り状況 & 動員予測</div>
         <div style="font-size:0.8rem;color:var(--gray)">前売り = 自由席 + 指定席 + 招待</div>
       </div>
-      <div style="overflow-x:auto">
-        <table id="upcomingTable">
+      <table id="upcomingTable">
           <thead>
             <tr>
               <th style="white-space:nowrap">日付</th>
