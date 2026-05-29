@@ -54,11 +54,16 @@
   th { background: #F9FAFB; padding: 11px 16px; text-align: left; font-size: 0.78rem; font-weight: 600; color: var(--gray); text-transform: uppercase; white-space: nowrap; position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 0 #E5E7EB; }
   td { padding: 13px 16px; border-top: 1px solid #F3F4F6; vertical-align: middle; }
   tr:hover td { background: var(--orange-light); }
-  /* 今後の試合テーブル：日付・時刻列をコンテンツ幅に縮める */
+  /* 今後の試合テーブル */
+  #upcomingTable th, #upcomingTable td { padding-left: 8px; padding-right: 8px; }
   #upcomingTable th:nth-child(1), #upcomingTable td:nth-child(1),
-  #upcomingTable th:nth-child(2), #upcomingTable td:nth-child(2) { width: 1%; white-space: nowrap; }
-  /* 来場者予測列が残り幅を吸収 */
-  #upcomingTable th:nth-child(9), #upcomingTable td:nth-child(9) { width: 100%; }
+  #upcomingTable th:nth-child(2), #upcomingTable td:nth-child(2),
+  #upcomingTable th:nth-child(3), #upcomingTable td:nth-child(3),
+  #upcomingTable th:nth-child(4), #upcomingTable td:nth-child(4),
+  #upcomingTable th:nth-child(5), #upcomingTable td:nth-child(5),
+  #upcomingTable th:nth-child(6), #upcomingTable td:nth-child(6),
+  #upcomingTable th:nth-child(8), #upcomingTable td:nth-child(8),
+  #upcomingTable th:nth-child(10), #upcomingTable td:nth-child(10) { width: 1%; white-space: nowrap; }
 
   /* 実績テーブル専用：列グループの区切り線 */
   #pastTable .col-sep, #pastTable th.col-sep { border-left: 2px solid #E5E7EB; }
