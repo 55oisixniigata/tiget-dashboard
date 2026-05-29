@@ -1098,9 +1098,7 @@ function renderUpcoming() {
     const daysLeft = Math.max(0, Math.round((gameDate - today) / (1000*60*60*24)));
 
     const dateShort = g.date.slice(5).replace('-', '/');  // "2026-05-09" → "05/09"
-    const dateText = isToday
-      ? `<span style="font-size:0.88rem;font-weight:700;color:var(--orange-dark)">${dateShort}</span>`
-      : `<span style="font-size:0.88rem">${dateShort}</span>`;
+    const dateText = `<span style="font-size:0.88rem">${dateShort}</span>`;
     const dowBadge = `<span class="badge ${g.is_weekend ? 'badge-orange' : 'badge-gray'}" style="font-size:0.7rem;padding:1px 7px">${g.dow}</span>`;
     const dateCell = `${dateText} ${dowBadge}`;
     const opColor = OPPONENT_COLORS[g.opponent] || '#6B7280';
