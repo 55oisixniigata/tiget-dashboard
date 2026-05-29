@@ -55,8 +55,19 @@
   td { padding: 13px 16px; border-top: 1px solid #F3F4F6; vertical-align: middle; }
   tr:hover td { background: var(--orange-light); }
   /* 今後の試合テーブル：日付・時刻列をコンテンツ幅に縮める */
-  #upcomingTable th:nth-child(1), #upcomingTable td:nth-child(1),
-  #upcomingTable th:nth-child(2), #upcomingTable td:nth-child(2) { width: 1%; white-space: nowrap; }
+  #upcomingTable { table-layout: fixed; width: 100%; }
+  #upcomingTable th { white-space: normal; overflow: hidden; }
+  #upcomingTable td { overflow: hidden; }
+  #upcomingTable th:nth-child(1), #upcomingTable td:nth-child(1) { width: 8%; white-space: nowrap; }
+  #upcomingTable th:nth-child(2), #upcomingTable td:nth-child(2) { width: 5%; }
+  #upcomingTable th:nth-child(3), #upcomingTable td:nth-child(3) { width: 8%; }
+  #upcomingTable th:nth-child(4), #upcomingTable td:nth-child(4) { width: 8%; }
+  #upcomingTable th:nth-child(5), #upcomingTable td:nth-child(5) { width: 9%; }
+  #upcomingTable th:nth-child(6), #upcomingTable td:nth-child(6) { width: 4%; }
+  #upcomingTable th:nth-child(7), #upcomingTable td:nth-child(7) { width: 11%; }
+  #upcomingTable th:nth-child(8), #upcomingTable td:nth-child(8) { width: 9%; }
+  #upcomingTable th:nth-child(9), #upcomingTable td:nth-child(9) { width: 26%; }
+  #upcomingTable th:nth-child(10), #upcomingTable td:nth-child(10) { width: 12%; }
 
   /* 実績テーブル専用：列グループの区切り線 */
   #pastTable .col-sep, #pastTable th.col-sep { border-left: 2px solid #E5E7EB; }
@@ -321,7 +332,7 @@
         <div class="table-title">今後のホーム試合 前売り状況 & 動員予測</div>
         <div style="font-size:0.8rem;color:var(--gray)">前売り = 自由席 + 指定席 + 招待</div>
       </div>
-      <div style="overflow-x:auto">
+      <div>
         <table id="upcomingTable">
           <thead>
             <tr>
