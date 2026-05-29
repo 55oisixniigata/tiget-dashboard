@@ -83,6 +83,16 @@
   .badge-gray { background: #F3F4F6; color: #4B5563; }
   .badge-today { background: var(--orange); color: white; }
   .badge-sponsor { background: #EDE9FE; color: #5B21B6; font-size: 0.68rem; padding: 1px 7px; }
+
+  /* 来場者予測内訳グリッド */
+  .pred-breakdown { font-size:0.67rem; margin-top:3px; line-height:1.75; }
+  .pred-row { display:flex; align-items:baseline; justify-content:flex-end; gap:3px; }
+  .pred-lbl { color:var(--gray); white-space:nowrap; }
+  .pred-num { font-weight:700; min-width:28px; text-align:right; }
+  .pred-num-purple { color:#7C3AED; }
+  .pred-num-green { color:#059669; }
+  .pred-note { color:#9CA3AF; font-size:0.6rem; white-space:nowrap; }
+  .pred-booked { color:#059669; font-size:0.62rem; white-space:nowrap; }
   
   /* プログレスバー */
   .progress-wrap { display: flex; align-items: center; gap: 8px; }
@@ -1138,24 +1148,26 @@ function renderUpcoming() {
     let predCell;
     const hasExtra = (g.kammuri && bd.kammuri > 0) || bd.other > 0;
     if (hasExtra) {
-      let lines = [];
-      lines.push(`<span style="color:var(--gray)">ベース</span> <strong>${bd.base.toLocaleString()}</strong>`);
+      let rows = [];
+      rows.push(`<div class="pred-row"><span class="pred-lbl">ベース</span><span class="pred-num">${bd.base.toLocaleString()}</span></div>`);
       if (g.kammuri && bd.kammuri > 0) {
         const sd = SPONSOR_DATA[g.kammuri];
         const hasConfig = sd && sd.haiken != null && sd.rate != null;
-        const kammuriDetail = hasConfig ? `${(sd.haiken/10000).toFixed(1)}万×${sd.rate}%` : `見込み`;
-        lines.push(`<span style="color:var(--gray)">＋冠</span> <strong style="color:#7C3AED">${bd.kammuri.toLocaleString()}</strong> <span style="color:#9CA3AF;font-size:0.63rem">(${kammuriDetail})</span>`);
+        const kammuriNote = hasConfig ? `${(sd.haiken/10000).toFixed(1)}万×${sd.rate}%` : '見込み';
+        rows.push(`<div class="pred-row"><span class="pred-lbl">＋冠</span><span class="pred-num pred-num-purple">${bd.kammuri.toLocaleString()}</span><span class="pred-note">${kammuriNote}</span></div>`);
       }
       if (bd.other > 0) {
-        if (bd.tigetShotai > 0) {
-          lines.push(`<span style="color:var(--gray)">＋招待</span> <strong style="color:#059669">${bd.adjustedOther.toLocaleString()}</strong> <span style="color:#9CA3AF;font-size:0.63rem">(見込${bd.other}-申込${bd.tigetShotai})</span>`);
+        if (bd.tigetShotai >= bd.other) {
+          rows.push(`<div class="pred-row"><span class="pred-booked">招待 TIGET申込済</span><span class="pred-note">${bd.tigetShotai}/${bd.other}人</span></div>`);
+        } else if (bd.tigetShotai > 0) {
+          rows.push(`<div class="pred-row"><span class="pred-lbl">＋招待</span><span class="pred-num pred-num-green">${bd.adjustedOther.toLocaleString()}</span><span class="pred-note">見込${bd.other} 申込${bd.tigetShotai}済</span></div>`);
         } else {
-          lines.push(`<span style="color:var(--gray)">＋招待</span> <strong style="color:#059669">${bd.other.toLocaleString()}</strong>`);
+          rows.push(`<div class="pred-row"><span class="pred-lbl">＋招待</span><span class="pred-num pred-num-green">${bd.other.toLocaleString()}</span><span class="pred-note">未申込</span></div>`);
         }
       }
       predCell = `
         <span style="font-size:1.05rem;font-weight:700;color:var(--orange-dark)">${bd.total.toLocaleString()}人</span>
-        <div style="font-size:0.68rem;margin-top:2px;line-height:1.8">${lines.join('<br>')}</div>
+        <div class="pred-breakdown">${rows.join('')}</div>
         ${otherEditBtn}`;
     } else {
       predCell = `
@@ -1184,11 +1196,11 @@ function renderUpcoming() {
       <tr ${rowClass}>
         <td style="white-space:nowrap">${dateBadge}</td>
         <td style="white-space:nowrap;padding-left:4px;padding-right:8px">${dowBadge}</td>
-        <td style="font-size:0.85rem;text-align:center">${g.time}</td>
-        <td style="white-space:nowrap;text-align:center"><span style="color:${opColor};font-weight:700">${g.opponent}</span></td>
-        <td style="white-space:nowrap;text-align:center">${venueCell}</td>
-        <td id="kammuriCell_${g.date}" style="white-space:nowrap;text-align:center">${kammuriLabel}${editBtn}</td>
-        <td style="white-space:nowrap;text-align:center">${weatherCell}</td>
+        <td style="font-size:0.78rem;text-align:center;color:#6B7280">${g.time}</td>
+        <td style="white-space:nowrap;text-align:center"><span style="color:${opColor};font-weight:700;font-size:0.9rem">${g.opponent}</span></td>
+        <td style="white-space:nowrap;text-align:center;font-size:0.8rem">${venueCell}</td>
+        <td id="kammuriCell_${g.date}" style="white-space:nowrap;text-align:center;font-size:0.8rem">${kammuriLabel}${editBtn}</td>
+        <td style="white-space:nowrap;text-align:center;font-size:0.8rem">${weatherCell}</td>
         <td style="text-align:right;padding-left:6px">${currentCell}</td>
         <td style="text-align:right">${projCell}</td>
         <td style="text-align:right">${predCell}</td>
